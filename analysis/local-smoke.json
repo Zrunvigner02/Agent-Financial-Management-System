@@ -1,0 +1,97 @@
+{
+  "at": "2026-11-11T08:26:02.689Z",
+  "base": "http://127.0.0.1:8000",
+  "checks": [
+    {
+      "name": "health",
+      "pass": true,
+      "detail": "subjects=131 llm=true"
+    },
+    {
+      "name": "sets/enabled",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "subjects",
+      "pass": true,
+      "detail": "count=131"
+    },
+    {
+      "name": "create_voucher",
+      "pass": true,
+      "detail": "id=3 amount=10000"
+    },
+    {
+      "name": "audit_voucher",
+      "pass": true,
+      "detail": "status=reviewed"
+    },
+    {
+      "name": "post_voucher",
+      "pass": true,
+      "detail": "status=posted"
+    },
+    {
+      "name": "list_vouchers",
+      "pass": true,
+      "detail": "total=2"
+    },
+    {
+      "name": "ledger_balance",
+      "pass": true,
+      "detail": "1002 debit=20000"
+    },
+    {
+      "name": "ledger_detail",
+      "pass": true,
+      "detail": "rows=2"
+    },
+    {
+      "name": "dashboard_overview",
+      "pass": true,
+      "detail": "revenue=20000 profit=20000"
+    },
+    {
+      "name": "closing_list",
+      "pass": true,
+      "detail": "posted=2"
+    },
+    {
+      "name": "mcp_initialize",
+      "pass": true,
+      "detail": "server=zhuangdian-guanzhang-local"
+    },
+    {
+      "name": "mcp_tools_list",
+      "pass": true,
+      "detail": "count=22 missing=none"
+    },
+    {
+      "name": "mcp_tools_call",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "agent_llm_config",
+      "pass": true,
+      "detail": "configured=true"
+    },
+    {
+      "name": "agent_skills",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "name": "agent_chat_sse",
+      "pass": true,
+      "detail": "events=53 kinds=content,done"
+    }
+  ],
+  "agent_answer_preview": "借贷记账法是一种以“有借必有贷、借贷必相等”为记账规则，对每笔经济业务在两个或两个以上相互关联的账户中同时登记，从而全面反映资金运动并保持账目平衡的复式记账方法。",
+  "cleanup": {
+    "voucher_id": 3,
+    "session_id": "smoke-1794385562763"
+  },
+  "summary": "17/17 passed"
+}

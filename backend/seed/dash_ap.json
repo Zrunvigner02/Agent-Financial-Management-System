@@ -1,0 +1,95 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "subjects": [
+      {
+        "code": "2202",
+        "name": "应付账款"
+      }
+    ],
+    "open": 0,
+    "occur": 0,
+    "pay": 0,
+    "end": 0,
+    "turnoverDays": null,
+    "turnoverEnabled": false,
+    "warnLine": null,
+    "months": [
+      {
+        "period": "2025-12",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-01",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-02",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-03",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-04",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-05",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-06",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-07",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-08",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-09",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-10",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-11",
+        "occur": 0,
+        "pay": 0,
+        "end": 0
+      }
+    ],
+    "suppliers": []
+  }
+}

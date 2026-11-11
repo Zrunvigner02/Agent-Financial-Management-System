@@ -1,0 +1,700 @@
+{
+  "base": "http://127.0.0.1:5173",
+  "recon_at": "2026-11-11T02:49:21.686Z",
+  "endpoints": [
+    {
+      "path": "/api/accounts",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/subjects",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 131,
+        "sample": {
+          "kind": "object",
+          "fields": {
+            "id": "number",
+            "set_id": "number",
+            "parent_id": "number",
+            "code": "string",
+            "full_code": "string",
+            "name": "string",
+            "category": "string",
+            "type": "string",
+            "direction": "string",
+            "currency": "string",
+            "aux_keys": {
+              "kind": "array",
+              "length": 0,
+              "sample": null
+            },
+            "status": "number",
+            "level": "number",
+            "created_at": "string",
+            "is_system": "number",
+            "locked": "boolean",
+            "lock_reason": "string",
+            "children": {
+              "kind": "array",
+              "length": 0,
+              "sample": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/vouchers",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "list": {
+            "kind": "array",
+            "length": 0,
+            "sample": null
+          },
+          "total": "number",
+          "page": "number",
+          "pageSize": "number"
+        }
+      }
+    },
+    {
+      "path": "/api/ledger/balance",
+      "status": 200,
+      "code": 1,
+      "message": "期间格式应为 YYYY-MM（或 from~to 且开始不得晚于结束）",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/ledger/detail",
+      "status": 200,
+      "code": 1,
+      "message": "期间格式应为 YYYY-MM（或 from~to 且开始不得晚于结束）",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/dashboard/overview",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "found": "boolean",
+          "period": "string",
+          "months": {
+            "kind": "array",
+            "length": 12,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "period",
+                "revenue",
+                "cost",
+                "expense",
+                "profit",
+                "ar",
+                "ap",
+                "arOccur",
+                "apOccur"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/dashboard/biz-settings",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "capital_warn_line": "null",
+          "capital_subject_ids": {
+            "kind": "array",
+            "length": 1,
+            "sample": "number"
+          },
+          "capital_subjects": {
+            "kind": "array",
+            "length": 1,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "code",
+                "name"
+              ]
+            }
+          },
+          "profit_subject_ids": {
+            "kind": "array",
+            "length": 20,
+            "sample": "number"
+          },
+          "profit_subjects": {
+            "kind": "array",
+            "length": 20,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "code",
+                "name"
+              ]
+            }
+          },
+          "revenue_subject_ids": {
+            "kind": "array",
+            "length": 2,
+            "sample": "number"
+          },
+          "revenue_subjects": {
+            "kind": "array",
+            "length": 2,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "code",
+                "name"
+              ]
+            }
+          },
+          "ar_subject_ids": {
+            "kind": "array",
+            "length": 2,
+            "sample": "number"
+          },
+          "ar_subjects": {
+            "kind": "array",
+            "length": 2,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "code",
+                "name"
+              ]
+            }
+          },
+          "ar2_warn": "null",
+          "ar2_turnover_enabled": "boolean",
+          "aux_types": {
+            "kind": "array",
+            "length": 0,
+            "sample": null
+          },
+          "ar_party_aux": {
+            "kind": "array",
+            "length": 0,
+            "sample": null
+          },
+          "ap_party_aux": {
+            "kind": "array",
+            "length": 0,
+            "sample": null
+          },
+          "cost_warn": "null",
+          "tax_items": {
+            "kind": "object",
+            "fields": {
+              "output": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "input": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "vatPayable": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "vatPaid": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "sur": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "cit": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "iit": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "other": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              },
+              "endLiab": {
+                "kind": "object",
+                "keys": [
+                  "name",
+                  "defaultRule",
+                  "formulas"
+                ]
+              }
+            }
+          },
+          "tax_rules": {
+            "kind": "array",
+            "length": 8,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "key",
+                "name"
+              ]
+            }
+          },
+          "tax_groups": {
+            "kind": "object",
+            "fields": {
+              "sur": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "vat": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "cit": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "iit": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "other": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              }
+            }
+          },
+          "tax_rate_warn": "null",
+          "cost_groups": {
+            "kind": "object",
+            "fields": {
+              "main": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "other": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              }
+            }
+          },
+          "expense_warn": "null",
+          "expense_entertain": {
+            "kind": "object",
+            "fields": {
+              "ids": {
+                "kind": "array",
+                "length": 0,
+                "sample": null
+              },
+              "subjects": {
+                "kind": "array",
+                "length": 0,
+                "sample": null
+              }
+            }
+          },
+          "expense_groups": {
+            "kind": "object",
+            "fields": {
+              "sales": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "admin": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "rd": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              },
+              "fin": {
+                "kind": "object",
+                "keys": [
+                  "ids",
+                  "subjects"
+                ]
+              }
+            }
+          },
+          "ap2_subject_ids": {
+            "kind": "array",
+            "length": 1,
+            "sample": "number"
+          },
+          "ap2_subjects": {
+            "kind": "array",
+            "length": 1,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "code",
+                "name"
+              ]
+            }
+          },
+          "ap2_warn": "null",
+          "ap2_turnover_enabled": "boolean",
+          "ar2_subject_ids": {
+            "kind": "array",
+            "length": 1,
+            "sample": "number"
+          },
+          "ar2_subjects": {
+            "kind": "array",
+            "length": 1,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "code",
+                "name"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/roles",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "list": {
+            "kind": "array",
+            "length": 3,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "name",
+                "description",
+                "created_at"
+              ]
+            }
+          },
+          "total": "number"
+        }
+      }
+    },
+    {
+      "path": "/api/tokens",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/auxiliaries",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/invoices",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "list": {
+            "kind": "array",
+            "length": 0,
+            "sample": null
+          },
+          "total": "number",
+          "page": "number",
+          "pageSize": "number"
+        }
+      }
+    },
+    {
+      "path": "/api/closing/list",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "rows": {
+            "kind": "array",
+            "length": 1,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "period",
+                "is_closed",
+                "closed_at",
+                "operator",
+                "carry_voucher_id",
+                "total",
+                "draft_count",
+                "reviewed_count",
+                "posted_count",
+                "void_count",
+                "reversed_count"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/agent/llm-config",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "configured": "boolean",
+          "has_global": "boolean"
+        }
+      }
+    },
+    {
+      "path": "/api/agent/skills",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "list": {
+            "kind": "array",
+            "length": 2,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "name",
+                "desc",
+                "icon",
+                "inputs"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/agent/sessions",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/agent/my-rules",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "content": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/organization/tree",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/reports/balance-sheet",
+      "status": 200,
+      "code": 1,
+      "message": "报表类型不正确",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/setting/business",
+      "status": 404,
+      "code": 404,
+      "message": "接口不存在",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    }
+  ],
+  "mcp": {
+    "initialize": {
+      "status": 200,
+      "session": false,
+      "result": {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {
+          "tools": {
+            "listChanged": false
+          }
+        },
+        "serverInfo": {
+          "name": "jinli-guanzhang",
+          "title": "锦鲤管账",
+          "version": "1.0.0"
+        }
+      }
+    },
+    "tools": {
+      "status": 200,
+      "count": 19,
+      "names": [
+        "list_sets",
+        "list_vouchers",
+        "get_voucher",
+        "get_ledger",
+        "get_report",
+        "list_assets",
+        "list_asset_categories",
+        "list_subjects",
+        "list_auxiliaries",
+        "list_invoices",
+        "get_closing_status",
+        "create_voucher",
+        "create_asset",
+        "create_subject",
+        "create_auxiliary",
+        "upload_invoice",
+        "create_invoice",
+        "list_invoice_templates",
+        "create_invoice_voucher"
+      ]
+    }
+  },
+  "sets": [
+    {
+      "id": 85,
+      "name": "锦鲤科技",
+      "keys": [
+        "id",
+        "name",
+        "frozen"
+      ]
+    }
+  ]
+}

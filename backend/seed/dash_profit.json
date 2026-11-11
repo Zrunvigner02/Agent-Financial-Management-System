@@ -1,0 +1,74 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "profit": {
+      "month": 0,
+      "ytd": 0
+    },
+    "months": [
+      {
+        "period": "2025-12",
+        "profit": 0
+      },
+      {
+        "period": "2026-01",
+        "profit": 0
+      },
+      {
+        "period": "2026-02",
+        "profit": 0
+      },
+      {
+        "period": "2026-03",
+        "profit": 0
+      },
+      {
+        "period": "2026-04",
+        "profit": 0
+      },
+      {
+        "period": "2026-05",
+        "profit": 0
+      },
+      {
+        "period": "2026-06",
+        "profit": 0
+      },
+      {
+        "period": "2026-07",
+        "profit": 0
+      },
+      {
+        "period": "2026-08",
+        "profit": 0
+      },
+      {
+        "period": "2026-09",
+        "profit": 0
+      },
+      {
+        "period": "2026-10",
+        "profit": 0
+      },
+      {
+        "period": "2026-11",
+        "profit": 0
+      }
+    ],
+    "composition": {
+      "income": 0,
+      "cost": 0,
+      "expense": 0,
+      "other": 0,
+      "profit": 0
+    },
+    "vsIncomeStatement": {
+      "consistent": true,
+      "diff": 0,
+      "baselineYtd": 0,
+      "ytd": 0
+    }
+  }
+}

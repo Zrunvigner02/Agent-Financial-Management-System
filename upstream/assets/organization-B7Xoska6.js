@@ -1,0 +1,1 @@
+import{$ as t}from"./index-CfiOBNy5.js";const i=["销售","管理","研发"];function e(){return t("/organization/tree")}function a(r){return t("/organization",{method:"POST",body:JSON.stringify(r)})}function g(r,n){return t(`/organization/${r}`,{method:"PUT",body:JSON.stringify(n)})}function u(r){return t(`/organization/${r}`,{method:"DELETE"})}export{i as D,a as c,e as g,u as r,g as u};

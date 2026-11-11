@@ -1,0 +1,271 @@
+{
+  "base": "http://127.0.0.1:5173",
+  "probed_at": "2026-11-11T02:48:31.836Z",
+  "endpoints": [
+    {
+      "path": "/api/auth/sets",
+      "status": 404,
+      "code": 404,
+      "message": "接口不存在",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/accounts",
+      "status": 404,
+      "code": 404,
+      "message": "接口不存在",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/auth/roles",
+      "status": 404,
+      "code": 404,
+      "message": "接口不存在",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/sets/enabled",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 1,
+        "sample": {
+          "kind": "object",
+          "fields": {
+            "id": "number",
+            "name": "string",
+            "frozen": "number"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/tokens",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/roles",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "list": {
+            "kind": "array",
+            "length": 3,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "name",
+                "description",
+                "created_at"
+              ]
+            }
+          },
+          "total": "number"
+        }
+      }
+    },
+    {
+      "path": "/api/accounts",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "array",
+        "length": 0,
+        "sample": null
+      }
+    },
+    {
+      "path": "/api/subjects",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/vouchers",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/ledger/balance",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/dashboard/overview",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/dashboard/biz-settings",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/report/balance-sheet",
+      "status": 404,
+      "code": 404,
+      "message": "接口不存在",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/auxiliaries",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/invoices",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/agent/sessions",
+      "status": 200,
+      "code": 1,
+      "message": "请先选择账套",
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "code": "number",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/agent/llm-config",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "configured": "boolean",
+          "has_global": "boolean"
+        }
+      }
+    },
+    {
+      "path": "/api/agent/skills",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "list": {
+            "kind": "array",
+            "length": 2,
+            "sample": {
+              "kind": "object",
+              "keys": [
+                "id",
+                "name",
+                "desc",
+                "icon",
+                "inputs"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/agent/my-rules",
+      "status": 200,
+      "code": 0,
+      "data_shape": {
+        "kind": "object",
+        "fields": {
+          "content": "string"
+        }
+      }
+    }
+  ],
+  "set_id_used": ""
+}

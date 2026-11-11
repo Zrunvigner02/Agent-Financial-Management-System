@@ -1,0 +1,43 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "subjects": [
+      {
+        "code": "1002",
+        "name": "银行存款"
+      }
+    ],
+    "subject": {
+      "code": "1002",
+      "name": "银行存款"
+    },
+    "total": 0,
+    "accounts": [
+      {
+        "id": 5911,
+        "code": "1002",
+        "name": "银行存款",
+        "group": "银行存款",
+        "balance": 0
+      }
+    ],
+    "trend": {
+      "labels": [
+        "11-08",
+        "11-15",
+        "11-22",
+        "11-30"
+      ],
+      "points": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "last_week_change": 0,
+    "warn_line": null
+  }
+}

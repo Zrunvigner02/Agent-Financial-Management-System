@@ -1,0 +1,461 @@
+{
+  "code": 0,
+  "data": {
+    "capital_warn_line": null,
+    "capital_subject_ids": [
+      5911
+    ],
+    "capital_subjects": [
+      {
+        "id": 5911,
+        "code": "1002",
+        "name": "银行存款"
+      }
+    ],
+    "profit_subject_ids": [
+      6009,
+      6040,
+      6010,
+      6018,
+      6019,
+      6020,
+      6021,
+      6022,
+      6011,
+      6012,
+      6013,
+      6014,
+      6015,
+      6016,
+      6017,
+      6023,
+      6024,
+      6025,
+      6027,
+      6026
+    ],
+    "profit_subjects": [
+      {
+        "id": 6009,
+        "code": "6001",
+        "name": "主营业务收入"
+      },
+      {
+        "id": 6040,
+        "code": "6041",
+        "name": "租赁收入"
+      },
+      {
+        "id": 6010,
+        "code": "6051",
+        "name": "其他业务收入"
+      },
+      {
+        "id": 6018,
+        "code": "6101",
+        "name": "公允价值变动损益"
+      },
+      {
+        "id": 6019,
+        "code": "6111",
+        "name": "投资收益"
+      },
+      {
+        "id": 6020,
+        "code": "6115",
+        "name": "资产处置收益"
+      },
+      {
+        "id": 6021,
+        "code": "6117",
+        "name": "其他收益"
+      },
+      {
+        "id": 6022,
+        "code": "6301",
+        "name": "营业外收入"
+      },
+      {
+        "id": 6011,
+        "code": "6401",
+        "name": "主营业务成本"
+      },
+      {
+        "id": 6012,
+        "code": "6402",
+        "name": "其他业务成本"
+      },
+      {
+        "id": 6013,
+        "code": "6403",
+        "name": "税金及附加"
+      },
+      {
+        "id": 6014,
+        "code": "6601",
+        "name": "销售费用"
+      },
+      {
+        "id": 6015,
+        "code": "6602",
+        "name": "管理费用"
+      },
+      {
+        "id": 6016,
+        "code": "6603",
+        "name": "财务费用"
+      },
+      {
+        "id": 6017,
+        "code": "6604",
+        "name": "研发费用"
+      },
+      {
+        "id": 6023,
+        "code": "6701",
+        "name": "资产减值损失"
+      },
+      {
+        "id": 6024,
+        "code": "6702",
+        "name": "信用减值损失"
+      },
+      {
+        "id": 6025,
+        "code": "6711",
+        "name": "营业外支出"
+      },
+      {
+        "id": 6027,
+        "code": "6801",
+        "name": "所得税费用"
+      },
+      {
+        "id": 6026,
+        "code": "6905",
+        "name": "套期损益"
+      }
+    ],
+    "revenue_subject_ids": [
+      6009,
+      6010
+    ],
+    "revenue_subjects": [
+      {
+        "id": 6009,
+        "code": "6001",
+        "name": "主营业务收入"
+      },
+      {
+        "id": 6010,
+        "code": "6051",
+        "name": "其他业务收入"
+      }
+    ],
+    "ar_subject_ids": [
+      5914,
+      5915
+    ],
+    "ar_subjects": [
+      {
+        "id": 5914,
+        "code": "1121",
+        "name": "应收票据"
+      },
+      {
+        "id": 5915,
+        "code": "1122",
+        "name": "应收账款"
+      }
+    ],
+    "ar2_warn": null,
+    "ar2_turnover_enabled": false,
+    "aux_types": [],
+    "ar_party_aux": [],
+    "ap_party_aux": [],
+    "cost_warn": null,
+    "tax_items": {
+      "output": {
+        "name": "销项税额",
+        "defaultRule": "period_credit",
+        "formulas": [
+          {
+            "subjectIds": [
+              5981
+            ],
+            "rule": "period_credit",
+            "sign": 1,
+            "subjects": [
+              {
+                "id": 5981,
+                "code": "22210102",
+                "name": "应交税费-应交增值税-销项税额"
+              }
+            ]
+          }
+        ]
+      },
+      "input": {
+        "name": "进项税额",
+        "defaultRule": "period_debit",
+        "formulas": [
+          {
+            "subjectIds": [
+              5980
+            ],
+            "rule": "period_debit",
+            "sign": 1,
+            "subjects": [
+              {
+                "id": 5980,
+                "code": "22210101",
+                "name": "应交税费-应交增值税-进项税额"
+              }
+            ]
+          }
+        ]
+      },
+      "vatPayable": {
+        "name": "应交增值税",
+        "defaultRule": "period_credit",
+        "formulas": []
+      },
+      "vatPaid": {
+        "name": "实缴增值税",
+        "defaultRule": "period_debit",
+        "formulas": []
+      },
+      "sur": {
+        "name": "税金及附加",
+        "defaultRule": "period_debit",
+        "formulas": [
+          {
+            "subjectIds": [
+              6013
+            ],
+            "rule": "period_debit",
+            "sign": 1,
+            "subjects": [
+              {
+                "id": 6013,
+                "code": "6403",
+                "name": "税金及附加"
+              }
+            ]
+          }
+        ]
+      },
+      "cit": {
+        "name": "企业所得税",
+        "defaultRule": "period_credit",
+        "formulas": []
+      },
+      "iit": {
+        "name": "个人所得税",
+        "defaultRule": "period_credit",
+        "formulas": []
+      },
+      "other": {
+        "name": "其他税费",
+        "defaultRule": "period_credit",
+        "formulas": []
+      },
+      "endLiab": {
+        "name": "期末应交税费",
+        "defaultRule": "end_balance",
+        "formulas": [
+          {
+            "subjectIds": [
+              5978
+            ],
+            "rule": "end_balance",
+            "sign": -1,
+            "subjects": [
+              {
+                "id": 5978,
+                "code": "2221",
+                "name": "应交税费"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "tax_rules": [
+      {
+        "key": "open_debit",
+        "name": "期初借方"
+      },
+      {
+        "key": "open_credit",
+        "name": "期初贷方"
+      },
+      {
+        "key": "open_balance",
+        "name": "期初余额"
+      },
+      {
+        "key": "period_debit",
+        "name": "本期借方"
+      },
+      {
+        "key": "period_credit",
+        "name": "本期贷方"
+      },
+      {
+        "key": "end_debit",
+        "name": "期末借方"
+      },
+      {
+        "key": "end_credit",
+        "name": "期末贷方"
+      },
+      {
+        "key": "end_balance",
+        "name": "期末余额"
+      }
+    ],
+    "tax_groups": {
+      "sur": {
+        "ids": [
+          6013
+        ],
+        "subjects": [
+          {
+            "id": 6013,
+            "code": "6403",
+            "name": "税金及附加"
+          }
+        ]
+      },
+      "vat": {
+        "ids": [
+          5979
+        ],
+        "subjects": [
+          {
+            "id": 5979,
+            "code": "222101",
+            "name": "应交税费-应交增值税"
+          }
+        ]
+      },
+      "cit": {
+        "ids": [],
+        "subjects": []
+      },
+      "iit": {
+        "ids": [],
+        "subjects": []
+      },
+      "other": {
+        "ids": [],
+        "subjects": []
+      }
+    },
+    "tax_rate_warn": null,
+    "cost_groups": {
+      "main": {
+        "ids": [
+          6011
+        ],
+        "subjects": [
+          {
+            "id": 6011,
+            "code": "6401",
+            "name": "主营业务成本"
+          }
+        ]
+      },
+      "other": {
+        "ids": [
+          6012
+        ],
+        "subjects": [
+          {
+            "id": 6012,
+            "code": "6402",
+            "name": "其他业务成本"
+          }
+        ]
+      }
+    },
+    "expense_warn": null,
+    "expense_entertain": {
+      "ids": [],
+      "subjects": []
+    },
+    "expense_groups": {
+      "sales": {
+        "ids": [
+          6014
+        ],
+        "subjects": [
+          {
+            "id": 6014,
+            "code": "6601",
+            "name": "销售费用"
+          }
+        ]
+      },
+      "admin": {
+        "ids": [
+          6015
+        ],
+        "subjects": [
+          {
+            "id": 6015,
+            "code": "6602",
+            "name": "管理费用"
+          }
+        ]
+      },
+      "rd": {
+        "ids": [
+          6017
+        ],
+        "subjects": [
+          {
+            "id": 6017,
+            "code": "6604",
+            "name": "研发费用"
+          }
+        ]
+      },
+      "fin": {
+        "ids": [
+          6016
+        ],
+        "subjects": [
+          {
+            "id": 6016,
+            "code": "6603",
+            "name": "财务费用"
+          }
+        ]
+      }
+    },
+    "ap2_subject_ids": [
+      5974
+    ],
+    "ap2_subjects": [
+      {
+        "id": 5974,
+        "code": "2202",
+        "name": "应付账款"
+      }
+    ],
+    "ap2_warn": null,
+    "ap2_turnover_enabled": false,
+    "ar2_subject_ids": [
+      5915
+    ],
+    "ar2_subjects": [
+      {
+        "id": 5915,
+        "code": "1122",
+        "name": "应收账款"
+      }
+    ]
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "month": 0,
+    "ytd": 0,
+    "revenueMonth": 0,
+    "revenueYtd": 0,
+    "expenseRateMonth": null,
+    "expenseRateYtd": null,
+    "months": [
+      {
+        "period": "2025-12",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-01",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-02",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-03",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-04",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-05",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-06",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-07",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-08",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-09",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-10",
+        "amount": 0,
+        "revenue": 0
+      },
+      {
+        "period": "2026-11",
+        "amount": 0,
+        "revenue": 0
+      }
+    ],
+    "warnLine": null,
+    "categories": [
+      {
+        "id": 6014,
+        "code": "6601",
+        "name": "销售费用",
+        "amount": 0,
+        "detail": [],
+        "percent": 0
+      },
+      {
+        "id": 6015,
+        "code": "6602",
+        "name": "管理费用",
+        "amount": 0,
+        "detail": [],
+        "percent": 0
+      },
+      {
+        "id": 6017,
+        "code": "6604",
+        "name": "研发费用",
+        "amount": 0,
+        "detail": [],
+        "percent": 0
+      },
+      {
+        "id": 6016,
+        "code": "6603",
+        "name": "财务费用",
+        "amount": 0,
+        "detail": [],
+        "percent": 0
+      }
+    ],
+    "entertain": {
+      "configured": false,
+      "month": 0,
+      "ytd": 0,
+      "revenueMonth": 0,
+      "revenueYtd": 0,
+      "deductMonth": 0,
+      "deductYtd": 0,
+      "overMonth": 0,
+      "overYtd": 0,
+      "taxMonth": 0,
+      "taxYtd": 0,
+      "taxRate": 0.25
+    },
+    "taxLimits": {
+      "wage": {
+        "month": 0,
+        "ytd": 0
+      },
+      "rows": [
+        {
+          "key": "welfare",
+          "name": "职工福利费",
+          "rule": "工资薪金总额 × 14%",
+          "carryOver": false,
+          "configured": false,
+          "month": 0,
+          "ytd": 0,
+          "baseMonth": 0,
+          "baseYtd": 0,
+          "limitMonth": 0,
+          "limitYtd": 0,
+          "overMonth": 0,
+          "overYtd": 0,
+          "taxMonth": 0,
+          "taxYtd": 0,
+          "subjects": []
+        },
+        {
+          "key": "union",
+          "name": "工会经费",
+          "rule": "工资薪金总额 × 2%",
+          "carryOver": false,
+          "configured": false,
+          "month": 0,
+          "ytd": 0,
+          "baseMonth": 0,
+          "baseYtd": 0,
+          "limitMonth": 0,
+          "limitYtd": 0,
+          "overMonth": 0,
+          "overYtd": 0,
+          "taxMonth": 0,
+          "taxYtd": 0,
+          "subjects": []
+        },
+        {
+          "key": "education",
+          "name": "职工教育经费",
+          "rule": "工资薪金总额 × 8%",
+          "carryOver": true,
+          "configured": false,
+          "month": 0,
+          "ytd": 0,
+          "baseMonth": 0,
+          "baseYtd": 0,
+          "limitMonth": 0,
+          "limitYtd": 0,
+          "overMonth": 0,
+          "overYtd": 0,
+          "taxMonth": 0,
+          "taxYtd": 0,
+          "subjects": []
+        },
+        {
+          "key": "ad",
+          "name": "广告和业务宣传费",
+          "rule": "营业收入 × 15%",
+          "carryOver": true,
+          "configured": false,
+          "month": 0,
+          "ytd": 0,
+          "baseMonth": 0,
+          "baseYtd": 0,
+          "limitMonth": 0,
+          "limitYtd": 0,
+          "overMonth": 0,
+          "overYtd": 0,
+          "taxMonth": 0,
+          "taxYtd": 0,
+          "subjects": []
+        }
+      ]
+    },
+    "reconcile": {
+      "income": 0,
+      "cost": 0,
+      "expense": 0,
+      "operatingProfit": 0,
+      "netProfit": 0,
+      "other": 0
+    },
+    "subjects": [
+      {
+        "id": 6014,
+        "code": "6601",
+        "name": "销售费用"
+      },
+      {
+        "id": 6015,
+        "code": "6602",
+        "name": "管理费用"
+      },
+      {
+        "id": 6016,
+        "code": "6603",
+        "name": "财务费用"
+      },
+      {
+        "id": 6017,
+        "code": "6604",
+        "name": "研发费用"
+      }
+    ]
+  }
+}

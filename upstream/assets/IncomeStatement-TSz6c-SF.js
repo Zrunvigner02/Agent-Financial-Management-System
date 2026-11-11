@@ -1,0 +1,1 @@
+import{R as e}from"./ReportView-jCAhXqxn.js";import{d as o,D as t,c as r}from"./index-CfiOBNy5.js";import"./exportCsv-ySA49PdJ.js";import"./subject-CPcRyt5O.js";import"./money-DgxEMOJz.js";import"./fitColumns-C0yr4t2j.js";const u=o({name:"/report/income",__name:"IncomeStatement",setup(m){return(p,n)=>(r(),t(e,{"report-type":"income"}))}});export{u as default};

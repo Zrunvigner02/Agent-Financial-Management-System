@@ -1,0 +1,233 @@
+{
+  "capital": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "subjects",
+      "subject",
+      "total",
+      "accounts",
+      "trend",
+      "last_week_change",
+      "warn_line"
+    ]
+  },
+  "revenue": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "revenue",
+      "ar",
+      "months",
+      "excludedTransferVouchers"
+    ]
+  },
+  "cost": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "month",
+      "ytd",
+      "revenueMonth",
+      "revenueYtd",
+      "costRateMonth",
+      "costRateYtd",
+      "months",
+      "warnLine",
+      "breakdown",
+      "groups",
+      "subjects"
+    ]
+  },
+  "profit": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "profit",
+      "months",
+      "composition",
+      "vsIncomeStatement"
+    ]
+  },
+  "expense": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "month",
+      "ytd",
+      "revenueMonth",
+      "revenueYtd",
+      "expenseRateMonth",
+      "expenseRateYtd",
+      "months",
+      "warnLine",
+      "categories",
+      "entertain",
+      "taxLimits",
+      "reconcile",
+      "subjects"
+    ]
+  },
+  "tax": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "items",
+      "total",
+      "endLiab",
+      "revenue",
+      "taxRate",
+      "warnRate",
+      "overWarn",
+      "months",
+      "surBreakdown",
+      "rules",
+      "itemDefs"
+    ]
+  },
+  "ar": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "subjects",
+      "open",
+      "borrow",
+      "repay",
+      "end",
+      "turnoverDays",
+      "warnLine",
+      "turnoverEnabled",
+      "months",
+      "customers"
+    ]
+  },
+  "ap": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "subjects",
+      "open",
+      "occur",
+      "pay",
+      "end",
+      "turnoverDays",
+      "turnoverEnabled",
+      "warnLine",
+      "months",
+      "suppliers"
+    ]
+  },
+  "capital-detail": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "subjects",
+      "subject",
+      "warnLine",
+      "rows",
+      "total"
+    ]
+  },
+  "revenue-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "cost-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "profit-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "expense-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "tax-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "ar-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "ap-detail": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  },
+  "ar-aging": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "total",
+      "prepaidTotal",
+      "netTotal",
+      "months",
+      "buckets"
+    ]
+  },
+  "ap-aging": {
+    "status": 200,
+    "code": 0,
+    "type": "object",
+    "keys": [
+      "found",
+      "period",
+      "total",
+      "prepaidTotal",
+      "netTotal",
+      "buckets"
+    ]
+  },
+  "profit-check": {
+    "status": 404,
+    "code": 404,
+    "message": "接口不存在",
+    "type": "undefined"
+  }
+}

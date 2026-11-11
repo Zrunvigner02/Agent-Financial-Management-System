@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>文件格式转换 · 妆点管账</title>
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<style>
+  :root { --plum:#742a54; --rose:#d870a0; --pale:#fff5f9; --line:#f0d9e5; --muted:#9b7189; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:28px 32px 48px; background:var(--pale); color:#4a2438;
+         font-family:"Microsoft YaHei","Segoe UI",sans-serif; }
+  header { display:flex; align-items:center; gap:16px; max-width:1080px; margin:0 auto 26px; }
+  .logo { width:52px; height:52px; border-radius:15px; flex:none;
+          background:linear-gradient(135deg,#fccddc,#742a54); color:#fff; font-size:29px;
+          font-weight:700; display:flex; align-items:center; justify-content:center;
+          box-shadow:0 8px 22px rgba(116,42,84,.22); }
+  h1 { font-size:23px; margin:0; letter-spacing:2px; }
+  .sub { color:var(--muted); font-size:13px; margin-top:5px; }
+  .back { margin-left:auto; color:var(--plum); text-decoration:none; font-size:13px;
+          border:1px solid var(--line); background:#fff; padding:9px 16px; border-radius:99px; }
+  .back:hover { background:#fce9f2; }
+  .wrap { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:22px 24px;
+          box-shadow:0 5px 22px rgba(116,42,84,.06); }
+  .card.full { grid-column:1 / -1; }
+  h2 { font-size:15px; margin:0 0 18px; color:var(--plum); letter-spacing:1px;
+       display:flex; align-items:center; gap:8px; }
+  h2::before { content:""; width:4px; height:15px; border-radius:4px; background:var(--rose); }
+  label { display:block; font-size:12px; color:var(--muted); margin:0 0 6px; letter-spacing:.5px; }
+  select, input[type=file] { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
+          background:#fffbfd; color:#4a2438; font-size:14px; font-family:inherit; outline:none; }
+  select:focus { border-color:var(--rose); box-shadow:0 0 0 3px rgba(216,112,160,.13); }
+  .field { margin-bottom:16px; }
+  .drop { border:1px dashed var(--rose); border-radius:12px; padding:22px 14px; text-align:center;
+          background:#fffbfd; color:var(--muted); font-size:13px; line-height:1.9; cursor:pointer; }
+  .drop:hover { background:#fce9f2; }
+  .drop b { color:var(--plum); }
+  .btn { width:100%; padding:11px; border:0; border-radius:9px; cursor:pointer;
+         background:linear-gradient(120deg,#d870a0,#742a54); color:#fff; font-size:14px;
+         letter-spacing:2px; font-family:inherit; }
+  .btn:hover { filter:brightness(1.06); }
+  .btn.ghost { background:#fff; color:var(--plum); border:1px solid var(--line); }
+  .btn:disabled { opacity:.55; cursor:not-allowed; }
+  .pill { display:inline-block; padding:3px 10px; border-radius:99px; font-size:11px;
+          background:#fbe7f0; color:var(--plum); margin:0 6px 6px 0; }
+  .pill.gray { background:#f4f0f2; color:#8b7a84; }
+  .status { margin-top:14px; padding:11px 14px; border-radius:9px; font-size:13px; line-height:1.8;
+            background:#fff3f8; border:1px solid var(--line); color:var(--muted); word-break:break-all; }
+  .status.err { background:#fff0f0; border-color:#f3c9c9; color:#a63c3c; }
+  .status.ok { background:#f0faf3; border-color:#c9e8d2; color:#2e7d4f; }
+  .status a { color:var(--plum); font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--muted); font-weight:500; padding:8px 10px; border-bottom:1px solid var(--line); }
+  td { padding:9px 10px; border-bottom:1px solid #faf0f5; }
+  .act { color:var(--plum); cursor:pointer; text-decoration:underline; }
+  .empty { color:var(--muted); font-size:13px; padding:16px 0; }
+  .note { font-size:12px; color:var(--muted); line-height:1.9; margin-top:12px; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:860px) { .wrap { grid-template-columns:1fr; } .two { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">&#8646;</div>
+  <div>
+    <h1>文件格式转换</h1>
+    <div class="sub">上传本地文件，或选择导出中心的报表，改成你需要的格式</div>
+  </div>
+  <a class="back" href="/">返回妆点管账</a>
+</header>
+
+<div class="wrap">
+  <section class="card">
+    <h2>① 选择来源文件</h2>
+    <div class="drop" id="drop">
+      点击选择本地文件，或把文件拖到这里<br />
+      <b>支持 CSV / TSV / TXT / JSON / MD / HTML / XLSX</b><br />
+      单个文件最大 5MB
+      <input type="file" id="picker" style="display:none" />
+    </div>
+    <div class="field" style="margin-top:16px">
+      <label>或使用导出目录里已有的文件</label>
+      <select id="files"><option value="">（加载中…）</option></select>
+    </div>
+    <button class="btn ghost" id="refresh">刷新文件列表</button>
+    <div class="note">上传的文件只保存在本机 <code>.local/exports/</code>，不会上传到任何服务器。</div>
+  </section>
+
+  <section class="card">
+    <h2>② 选择目标格式</h2>
+    <div class="field">
+      <label>转换为</label>
+      <select id="target"><option value="">（加载中…）</option></select>
+    </div>
+    <div id="fmtPills"></div>
+    <button class="btn" id="go" style="margin-top:18px">开始转换</button>
+    <div class="status" id="status">准备就绪。</div>
+    <div class="note" id="fileeNote"></div>
+  </section>
+
+  <section class="card full">
+    <h2>导出目录中的文件</h2>
+    <div id="fileList"><div class="empty">加载中…</div></div>
+    <div class="note">转换结果保存在 <code>.local/exports/converted/</code>，点击结果里的下载链接即可保存到本机；若想基于转换结果再转一次，把该文件重新上传即可。</div>
+  </section>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const token = sessionStorage.getItem('jl_token') || '';
+const H = { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const api = async (url, opts = {}) => {
+  const r = await fetch(url, { ...opts, headers: { ...H, ...(opts.headers || {}) } });
+  if (r.status === 401) throw new Error('登录已过期，请返回妆点管账重新登录后再进入本页');
+  return r.json();
+};
+const setStatus = (msg, kind = '') => { $('#status').className = 'status' + (kind ? ' ' + kind : ''); $('#status').innerHTML = msg; };
+
+let chosen = '';
+
+async function loadFormats() {
+  const r = await api('/api/export/formats');
+  const d = r.data || {};
+  const builtin = d.convertToBuiltin || ['csv', 'xlsx', 'json', 'md', 'html'];
+  const filee = (d.fileeTargets || []).filter((x) => !builtin.includes(x));
+  $('#target').innerHTML = builtin.map((f) => `<option value="${f}">${f.toUpperCase()}（内置互转）</option>`).join('')
+    + filee.map((f) => `<option value="${f}">${f.toUpperCase()}（转换桥）</option>`).join('');
+  $('#fmtPills').innerHTML = builtin.map((f) => `<span class="pill">${f.toUpperCase()}</span>`).join('')
+    + filee.map((f) => `<span class="pill">${f.toUpperCase()}</span>`).join('')
+    + `<span class="pill gray">源格式：${(d.convertFrom || []).join(' / ')}</span>`;
+  const fs = d.filee || {};
+  $('#fileeNote').innerHTML = fs.configured
+    ? `转换桥已就绪：<code>${esc(fs.cli || '')}</code>（${fs.engine === 'local-bridge' ? '本地零依赖实现，无需 .NET' : '外部 Filee CLI'}）。PDF / DOCX / ODS / ODT / RTF / 图片等由该进程生成。`
+    : '<b>转换桥未配置</b>：内置 5 种表格格式互转可直接使用；如需 PDF / DOCX / ODS / 图片，请在项目 <code>.env</code> 里设置 <code>FILEE_CLI=tools/filee-bridge.mjs</code> 后重启应用。';
+}
+
+async function loadFiles(keep) {
+  const r = await api('/api/export/files');
+  const list = (r.data || []).filter((f) => f && f.name);
+  $('#files').innerHTML = list.length
+    ? list.map((f) => `<option value="${esc(f.name)}">${esc(f.name)}　(${(f.size / 1024).toFixed(1)} KB)</option>`).join('')
+    : '<option value="">（暂无文件，请先上传或到导出中心生成报表）</option>';
+  if (keep && list.some((f) => f.name === keep)) $('#files').value = keep;
+  else chosen = $('#files').value || '';
+  $('#fileList').innerHTML = list.length
+    ? `<table><thead><tr><th>文件名</th><th>大小</th><th>生成时间</th><th></th></tr></thead><tbody>` +
+      list.map((f) => `<tr><td>${esc(f.name)}</td><td>${(f.size / 1024).toFixed(1)} KB</td>
+        <td>${new Date(f.mtime).toLocaleString('zh-CN')}</td>
+        <td class="act" data-pick="${esc(f.name)}">选用</td></tr>`).join('') + '</tbody></table>'
+    : '<div class="empty">暂无文件</div>';
+  $('#fileList').querySelectorAll('[data-pick]').forEach((el) => {
+    el.onclick = () => { $('#files').value = el.dataset.pick; chosen = el.dataset.pick; setStatus('已选用：' + esc(chosen)); };
+  });
+}
+
+$('#files').addEventListener('change', () => { chosen = $('#files').value; });
+$('#refresh').onclick = () => loadFiles(chosen);
+$('#drop').onclick = () => $('#picker').click();
+$('#drop').ondragover = (e) => { e.preventDefault(); };
+$('#drop').ondrop = (e) => { e.preventDefault(); if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); };
+$('#picker').addEventListener('change', (e) => { if (e.target.files[0]) upload(e.target.files[0]); });
+
+async function upload(file) {
+  setStatus('正在上传 ' + esc(file.name) + ' …');
+  try {
+    const b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+      fr.onerror = () => reject(new Error('读取文件失败'));
+      fr.readAsDataURL(file);
+    });
+    const r = await api('/api/export/upload', { method: 'POST', body: JSON.stringify({ name: file.name, content: b64 }) });
+    if (r.code !== 0 || !r.data?.ok) throw new Error(r.message || '上传失败');
+    setStatus('已上传：<b>' + esc(r.data.name) + '</b>（' + (r.data.size / 1024).toFixed(1) + ' KB）', 'ok');
+    await loadFiles(r.data.name);
+    chosen = r.data.name;
+    $('#files').value = chosen;
+  } catch (e) { setStatus('上传失败：' + esc(e.message), 'err'); }
+}
+
+$('#go').onclick = async () => {
+  const file = $('#files').value || chosen;
+  const to = $('#target').value;
+  if (!file) return setStatus('请先上传文件或从下拉里选一个文件', 'err');
+  if (!to) return setStatus('请选择目标格式', 'err');
+  $('#go').disabled = true;
+  setStatus('正在转换 ' + esc(file) + ' → ' + to.toUpperCase() + ' …');
+  try {
+    const r = await api('/api/export/convert', { method: 'POST', body: JSON.stringify({ file, to }) });
+    const d = r.data || {};
+    if (r.code !== 0 || !d.ok) throw new Error(d.message || r.message || '转换失败');
+    const link = d.download || `/api/export/download?dir=converted&file=${encodeURIComponent(d.output)}`;
+    setStatus('✅ ' + esc(d.message || '转换完成') + '<br /><a href="' + esc(link) + '">下载 ' + esc(d.output) + '</a>', 'ok');
+    await loadFiles(file);
+  } catch (e) { setStatus('转换失败：' + esc(e.message), 'err'); }
+  finally { $('#go').disabled = false; }
+};
+
+(async () => {
+  try { await Promise.all([loadFormats(), loadFiles()]); }
+  catch (e) { setStatus('初始化失败：' + esc(e.message), 'err'); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "subjects": [
+      {
+        "code": "1002",
+        "name": "银行存款"
+      }
+    ],
+    "subject": {
+      "code": "1002",
+      "name": "银行存款"
+    },
+    "warnLine": null,
+    "rows": [
+      {
+        "id": 5911,
+        "code": "1002",
+        "name": "银行存款",
+        "group": "银行存款",
+        "open": 0,
+        "inflow": 0,
+        "outflow": 0,
+        "end": 0
+      }
+    ],
+    "total": {
+      "open": 0,
+      "inflow": 0,
+      "outflow": 0,
+      "end": 0
+    }
+  }
+}

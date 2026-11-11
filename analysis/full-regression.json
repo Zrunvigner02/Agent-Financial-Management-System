@@ -1,0 +1,713 @@
+{
+  "at": "2026-11-11T09:37:38.039Z",
+  "port": 8002,
+  "isolated": true,
+  "summary": "117 PASS / 0 FAIL",
+  "pass": 117,
+  "fail": 0,
+  "results": [
+    {
+      "group": "",
+      "name": "隔离实例启动 + health",
+      "pass": true,
+      "detail": "131 科目"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "health 结构与真实基线",
+      "pass": true,
+      "detail": "subjects=131 vouchers=0"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "OPTIONS 预检返回 204 + CORS",
+      "pass": true,
+      "detail": "status=204"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "无令牌访问受保护接口 → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "错误令牌 → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "MCP 无令牌 → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "未知 GET 路由返回兼容空结构",
+      "pass": true,
+      "detail": "{\"code\":0,\"data\":[],\"message\":\"\"}"
+    },
+    {
+      "group": "A · 基础设施与鉴权",
+      "name": "未实现写操作返回 code!=0（不假成功）",
+      "pass": true,
+      "detail": "本地版暂未实现该操作：/api/__regression_not_implemented"
+    },
+    {
+      "group": "B · 认证 / 账户 / 角色",
+      "name": "本地管理员登录成功",
+      "pass": true,
+      "detail": "code=0 msg="
+    },
+    {
+      "group": "B · 认证 / 账户 / 角色",
+      "name": "错误密码登录被拒绝",
+      "pass": true,
+      "detail": "code=1"
+    },
+    {
+      "group": "B · 认证 / 账户 / 角色",
+      "name": "旧密码错误时改密被拒绝",
+      "pass": true,
+      "detail": "原密码不正确"
+    },
+    {
+      "group": "B · 认证 / 账户 / 角色",
+      "name": "账户列表 / 创建 / 更新 / 删除闭环",
+      "pass": true,
+      "detail": "id=7 upd=0 del=0"
+    },
+    {
+      "group": "B · 认证 / 账户 / 角色",
+      "name": "禁止删除当前登录账户",
+      "pass": true,
+      "detail": "不能删除当前登录账号"
+    },
+    {
+      "group": "B · 认证 / 账户 / 角色",
+      "name": "角色 创建 / 菜单权限 / 更新 / 删除闭环",
+      "pass": true,
+      "detail": "id=70 menus=0 read=0 del=0"
+    },
+    {
+      "group": "C · 账套与科目",
+      "name": "账套列表 / 启用列表 / 新建 / 更新",
+      "pass": true,
+      "detail": "sets=1 new=86"
+    },
+    {
+      "group": "C · 账套与科目",
+      "name": "科目表 ≥100 条且结构完整",
+      "pass": true,
+      "detail": "count=131"
+    },
+    {
+      "group": "C · 账套与科目",
+      "name": "科目 新建 / 删除闭环，非法科目被拒绝",
+      "pass": true,
+      "detail": "bad=1 id=6044 del=0"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "创建借贷平衡凭证",
+      "pass": true,
+      "detail": "id=1 amount=12345.67"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "借贷不平衡凭证被拒绝",
+      "pass": true,
+      "detail": "凭证至少要有两条分录"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "空分录凭证被拒绝",
+      "pass": true,
+      "detail": "凭证至少要有两条分录"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "凭证详情 / 列表可查",
+      "pass": true,
+      "detail": "total=1"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "跨账套读取凭证被拒绝",
+      "pass": true,
+      "detail": "凭证不存在"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "审核 → 过账 → 反过账 → 反审核 状态机",
+      "pass": true,
+      "detail": "audit2=1 post2=1 unpost=0 unaudit=0"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "反审核后可删除，删除后再查返回错误",
+      "pass": true,
+      "detail": "del=0 get=1"
+    },
+    {
+      "group": "D · 凭证全生命周期",
+      "name": "账簿余额 / 明细与凭证一致",
+      "pass": true,
+      "detail": "roots=131 rows=0"
+    },
+    {
+      "group": "E · 看板 / 结账",
+      "name": "经营概览返回真实汇总",
+      "pass": true,
+      "detail": "revenue=0"
+    },
+    {
+      "group": "E · 看板 / 结账",
+      "name": "云端提供的 11 个看板分项全部可读",
+      "pass": true,
+      "detail": "capital:0 revenue:0 cost:0 profit:0 expense:0 tax:0 ar:0 ap:0 capital-detail:0 ar-aging:0 ap-aging:0"
+    },
+    {
+      "group": "E · 看板 / 结账",
+      "name": "未知 / 云端不存在的看板分项返回明确错误",
+      "pass": true,
+      "detail": "a=未知看板分项 b=未知看板分项"
+    },
+    {
+      "group": "E · 看板 / 结账",
+      "name": "结账列表 / 业务设置",
+      "pass": true,
+      "detail": "closing=0 settings=0"
+    },
+    {
+      "group": "F · 辅助档案 / 资产 / 发票",
+      "name": "辅助档案 列表 / 新建",
+      "pass": true,
+      "detail": "new=0"
+    },
+    {
+      "group": "F · 辅助档案 / 资产 / 发票",
+      "name": "资产类别 / 资产 列表与新建",
+      "pass": true,
+      "detail": "cat=0 asset=0"
+    },
+    {
+      "group": "F · 辅助档案 / 资产 / 发票",
+      "name": "发票 列表 / 模板 / 上传 / 生成凭证",
+      "pass": true,
+      "detail": "invoice=1 voucher=0 "
+    },
+    {
+      "group": "F · 辅助档案 / 资产 / 发票",
+      "name": "不存在的发票生成凭证被拒绝",
+      "pass": true,
+      "detail": "发票不存在"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "系统提示词声明本地账套与取数能力（不再否认有数据）",
+      "pass": true,
+      "detail": "len=344 你是妆点管账（本地桌面财务软件）内置的财务助手，回答简洁、专业，涉及金额时保留两位小数。\n\n【运行环境】你运行在本机，后端已直连本地账套「振"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "模型配置读取 / 保存 / 重置",
+      "pass": true,
+      "detail": "configured=true model=dsv4.1f1017 put=0"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "技能列表与技能执行 SSE",
+      "pass": true,
+      "detail": "skill=month-end-check events=tool,tool,content,content,content,content,done"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "未知技能以 error+done 收尾（不挂起）",
+      "pass": true,
+      "detail": "error,done"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "自定义提示词技能 CRUD",
+      "pass": true,
+      "detail": "id=6 del=0"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "智能体会话 新建 / 消息 / 重命名 / 删除",
+      "pass": true,
+      "detail": "未创建的会话删除应失败 d=1 d2=1"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "已创建的会话可重命名并删除",
+      "pass": true,
+      "detail": "sid=15cdb6653c285162ee4524aa put=0 del=0"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "知识记忆 / 我的规则 读写一致",
+      "pass": true,
+      "detail": "mem=0 del=0 rules=回归规则"
+    },
+    {
+      "group": "G · 智能体配置 / 技能 / 会话",
+      "name": "无须确认的操作返回明确提示",
+      "pass": true,
+      "detail": "没有待确认的操作（本地技能均为只读查询，无需二次确认）"
+    },
+    {
+      "group": "H · 意图追问工具",
+      "name": "意图分析：咨询 / 闲聊 / 模糊 / 规格完整 / 停用 / 恢复",
+      "pass": true,
+      "detail": "no_clarify=no_clarify no_clarify=no_clarify clarify=clarify direct=direct disable=disable enable=enable"
+    },
+    {
+      "group": "H · 意图追问工具",
+      "name": "偏好开关 持久化 / 关闭 / 恢复",
+      "pass": true,
+      "detail": "true → false → true"
+    },
+    {
+      "group": "H · 意图追问工具",
+      "name": "追问状态 / 重置 / last 端点",
+      "pass": true,
+      "detail": "active1=true active2=false"
+    },
+    {
+      "group": "H · 意图追问工具",
+      "name": "聊天 SSE 多轮追问：选项 / 末项自主输入 / 最终产出",
+      "pass": true,
+      "detail": "events=session_title,content,clarify,done opts=4 last={\"value\":\"__custom__\",\"label\":\"✎ 其他补充…（我自己输入）\",\"desc\":\"点这里后直接在输入框写出你的要求，再点发送\",\"c step2=true step3=true"
+    },
+    {
+      "group": "H · 意图追问工具",
+      "name": "旧页面（capable=false）不会只发文字无卡片",
+      "pass": true,
+      "detail": "session_title,content,content,content…"
+    },
+    {
+      "group": "H · 意图追问工具",
+      "name": "「不用反问了」停用后不再追问且可恢复",
+      "pass": true,
+      "detail": "off=session_title,content,clarify,done after=content,content,content on=content,clarify,done"
+    },
+    {
+      "group": "H2 · 会话自动命名",
+      "name": "前端先建会话 → 首条消息发 session_title 且列表同步改名",
+      "pass": true,
+      "detail": "sid=1fbeec18dc71297ff3f718a2 event={\"session_id\":\"1fbeec18dc71297ff3f718a2\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
+    },
+    {
+      "group": "H2 · 会话自动命名",
+      "name": "第二条消息不重复命名 / 手动改名后自动命名永久让位",
+      "pass": true,
+      "detail": "t1=本月各科目余额 t2=我的专属名称 ev1=session_title,content,clarify,done ev2=content,clarify,done"
+    },
+    {
+      "group": "H2 · 会话自动命名",
+      "name": "追问选项消息不命名，真实问题才命名",
+      "pass": true,
+      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1794389851558\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
+    },
+    {
+      "group": "H2 · 会话自动命名",
+      "name": "auto-title 精修端点：自动生成可精修 / 人工名称不动",
+      "pass": true,
+      "detail": "a={\"session_id\":\"da65055b56b9f91a8d5ca831\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"da65055b56b9f91a8d5ca831\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件格式清单覆盖 ≥50 种",
+      "pass": true,
+      "detail": "51 种"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .csv 解析为非空文本",
+      "pass": true,
+      "detail": "engine=table-csv text=【附件：明细.csv】\n格式：.csv · 读取引擎：table-csv · 大小：31 "
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .tsv 解析为非空文本",
+      "pass": true,
+      "detail": "engine=table-tsv text=【附件：流水.tsv】\n格式：.tsv · 读取引擎：table-tsv · 大小：22 "
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .json 解析为非空文本",
+      "pass": true,
+      "detail": "engine=table-json text=【附件：凭证.json】\n格式：.json · 读取引擎：table-json · 大小："
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .md 解析为非空文本",
+      "pass": true,
+      "detail": "engine=table-md text=【附件：说明.md】\n格式：.md · 读取引擎：table-md · 大小：50 B ·"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .html 解析为非空文本",
+      "pass": true,
+      "detail": "engine=table-html text=【附件：账单.html】\n格式：.html · 读取引擎：table-html · 大小："
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .txt 解析为非空文本",
+      "pass": true,
+      "detail": "engine=table-txt text=【附件：备注.txt】\n格式：.txt · 读取引擎：table-txt · 大小：33 "
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .xml 解析为非空文本",
+      "pass": true,
+      "detail": "engine=text-xml text=【附件：数据.xml】\n格式：.xml · 读取引擎：text-xml · 大小：40 B"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件 .log 解析为非空文本",
+      "pass": true,
+      "detail": "engine=text-log text=【附件：运行.log】\n格式：.log · 读取引擎：text-log · 大小：28 B"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "前端字段名 image/file_name 被正确兼容",
+      "pass": true,
+      "detail": "engine=table-csv"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "附件列表与按路径复读",
+      "pass": true,
+      "detail": "list=5"
+    },
+    {
+      "group": "I · 全格式附件",
+      "name": "未知扩展名优雅降级 + 不存在的路径明确报错",
+      "pass": true,
+      "detail": "a=0/【附件：坏文件.zzzz】\n格式：.zzzz · 读取引擎：binary-strings · 大小：3 B\n以下内容来自 b=文件不存在：C:/definitely/not/exist.csv"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "导出格式清单完整",
+      "pass": true,
+      "detail": "builtin=csv/xlsx/json/md/html engine=local-bridge"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "报表 vouchers.csv 导出",
+      "pass": true,
+      "detail": "226B text/csv; charset=utf-8"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "报表 vouchers.xlsx 导出",
+      "pass": true,
+      "detail": "4040B application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "报表 subjects.json 导出",
+      "pass": true,
+      "detail": "20350B application/json; charset=utf-8"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "报表 ledger.md 导出",
+      "pass": true,
+      "detail": "233B text/markdown; charset=utf-8"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "报表 dashboard.html 导出",
+      "pass": true,
+      "detail": "1950B text/html; charset=utf-8"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "非法报表类型 / 格式 / 期间被拒绝",
+      "pass": true,
+      "detail": "1/1/1"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "导出文件列表与下载",
+      "pass": true,
+      "detail": "files=5"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "下载路径穿越 / 不存在文件被拒绝",
+      "pass": true,
+      "detail": "a=文件不存在 b=文件不存在"
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "上传 CSV 源文件",
+      "pass": true,
+      "detail": "file=回归转换源.csv msg="
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "格式转换 CSV→xlsx",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "格式转换 CSV→json",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "格式转换 CSV→md",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "格式转换 CSV→html",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "格式转换 CSV→pdf",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "格式转换 CSV→docx",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "group": "J · 报表导出与格式转换",
+      "name": "非法转换目标 / 路径穿越 / 空文件名被拒绝",
+      "pass": true,
+      "detail": "1/1/1"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "initialize 返回协议/能力 + mcp-session-id",
+      "pass": true,
+      "detail": "server=zhuangdian-guanzhang-local session=true"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "ping / notifications / 未知方法",
+      "pass": true,
+      "detail": "ping=true notify=202 unknown=-32601"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "GET / DELETE /mcp 兼容 streamableHttp",
+      "pass": true,
+      "detail": "GET=200 DELETE=200"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "tools/list 工具齐备且均带 schema 与描述",
+      "pass": true,
+      "detail": "count=23 allHaveSchema=true missing=none"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "为 MCP 查询准备一张真实凭证",
+      "pass": true,
+      "detail": "id=3"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_sets",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_vouchers",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call get_voucher",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call get_ledger",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call get_report",
+      "pass": true,
+      "detail": "code=0 isError=false 已按本地账套真实数据生成 会计科目表（131 行）"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_assets",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_asset_categories",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_subjects",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_auxiliaries",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_invoices",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call get_closing_status",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call create_voucher",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call create_asset",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call create_subject",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call create_auxiliary",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call upload_invoice",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call create_invoice",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call list_invoice_templates",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call create_invoice_voucher",
+      "pass": true,
+      "detail": "code=1 isError=true 发票不存在"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call clarify_intent",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call analyze_intent",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call read_attachment",
+      "pass": true,
+      "detail": "code=1 isError=true 工具执行失败：文件不存在：C:/definitely/not/exist.csv"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP tools/call data_audit",
+      "pass": true,
+      "detail": "code=0 isError=false "
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP get_report 返回真实数据而非空 rows",
+      "pass": true,
+      "detail": "rows=132/132 columns=5 url=true"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP get_report 凭证报表随真实写入变化",
+      "pass": true,
+      "detail": "row_count 6 → 8"
+    },
+    {
+      "group": "K · MCP / WorkBuddy 对接",
+      "name": "MCP get_report 非法类型给出明确错误",
+      "pass": true,
+      "detail": "报表生成失败：不支持的报表类型：__nope__"
+    },
+    {
+      "group": "L · SSE 契约与安全边界",
+      "name": "chat 标准 SSE：event 行 + content + done 收尾",
+      "pass": true,
+      "detail": "events=154 kinds=session_title,content,done"
+    },
+    {
+      "group": "L · SSE 契约与安全边界",
+      "name": "非法 x-set-id 不导致 500",
+      "pass": true,
+      "detail": "status=200 code=0"
+    },
+    {
+      "group": "L · SSE 契约与安全边界",
+      "name": "超长 / 特殊字符参数不导致 500",
+      "pass": true,
+      "detail": "a=200 b=200"
+    },
+    {
+      "group": "L · SSE 契约与安全边界",
+      "name": "并发 12 个请求全部正常返回",
+      "pass": true,
+      "detail": "12/12"
+    },
+    {
+      "group": "L · SSE 契约与安全边界",
+      "name": "子进程全程未崩溃",
+      "pass": true,
+      "detail": "alive"
+    }
+  ],
+  "child_log_tail": "(node:26316) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n\n[child exited null]"
+}

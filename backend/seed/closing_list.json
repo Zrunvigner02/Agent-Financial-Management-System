@@ -1,0 +1,20 @@
+{
+  "code": 0,
+  "data": {
+    "rows": [
+      {
+        "period": "2026-11",
+        "is_closed": false,
+        "closed_at": "",
+        "operator": "",
+        "carry_voucher_id": null,
+        "total": 0,
+        "draft_count": 0,
+        "reviewed_count": 0,
+        "posted_count": 0,
+        "void_count": 0,
+        "reversed_count": 0
+      }
+    ]
+  }
+}

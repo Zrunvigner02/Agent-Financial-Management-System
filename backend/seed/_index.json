@@ -1,0 +1,219 @@
+{
+  "sets_enabled": {
+    "url": "/api/sets/enabled",
+    "status": 200,
+    "code": 0,
+    "data_type": "array",
+    "length": 1,
+    "sample_keys": [
+      "id",
+      "name",
+      "frozen"
+    ]
+  },
+  "subjects": {
+    "url": "/api/subjects",
+    "status": 200,
+    "code": 0,
+    "data_type": "array",
+    "length": 131,
+    "sample_keys": [
+      "id",
+      "set_id",
+      "parent_id",
+      "code",
+      "full_code",
+      "name",
+      "category",
+      "type",
+      "direction",
+      "currency",
+      "aux_keys",
+      "status",
+      "level",
+      "created_at",
+      "is_system",
+      "locked",
+      "lock_reason",
+      "children"
+    ]
+  },
+  "vouchers": {
+    "url": "/api/vouchers",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "list",
+      "total",
+      "page",
+      "pageSize"
+    ]
+  },
+  "dashboard_overview": {
+    "url": "/api/dashboard/overview",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "found",
+      "period",
+      "months"
+    ]
+  },
+  "dashboard_biz_settings": {
+    "url": "/api/dashboard/biz-settings",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "capital_warn_line",
+      "capital_subject_ids",
+      "capital_subjects",
+      "profit_subject_ids",
+      "profit_subjects",
+      "revenue_subject_ids",
+      "revenue_subjects",
+      "ar_subject_ids",
+      "ar_subjects",
+      "ar2_warn",
+      "ar2_turnover_enabled",
+      "aux_types",
+      "ar_party_aux",
+      "ap_party_aux",
+      "cost_warn",
+      "tax_items",
+      "tax_rules",
+      "tax_groups",
+      "tax_rate_warn",
+      "cost_groups",
+      "expense_warn",
+      "expense_entertain",
+      "expense_groups",
+      "ap2_subject_ids",
+      "ap2_subjects",
+      "ap2_warn",
+      "ap2_turnover_enabled",
+      "ar2_subject_ids",
+      "ar2_subjects"
+    ]
+  },
+  "ledger_balance": {
+    "url": "/api/ledger/balance?period=2026-10",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "period",
+      "includeUnposted",
+      "hideZeroBalance",
+      "hideZeroAll",
+      "roots",
+      "totals"
+    ]
+  },
+  "ledger_detail": {
+    "url": "/api/ledger/detail?period=2026-10",
+    "status": 200,
+    "code": 1,
+    "data_type": "undefined"
+  },
+  "roles": {
+    "url": "/api/roles",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "list",
+      "total"
+    ]
+  },
+  "organization_tree": {
+    "url": "/api/organization/tree",
+    "status": 200,
+    "code": 0,
+    "data_type": "array",
+    "length": 0
+  },
+  "auxiliaries": {
+    "url": "/api/auxiliaries",
+    "status": 200,
+    "code": 0,
+    "data_type": "array",
+    "length": 0
+  },
+  "invoices": {
+    "url": "/api/invoices",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "list",
+      "total",
+      "page",
+      "pageSize"
+    ]
+  },
+  "closing_list": {
+    "url": "/api/closing/list",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "rows"
+    ]
+  },
+  "agent_llm_config": {
+    "url": "/api/agent/llm-config",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "configured",
+      "has_global"
+    ]
+  },
+  "agent_skills": {
+    "url": "/api/agent/skills",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "list"
+    ]
+  },
+  "agent_my_rules": {
+    "url": "/api/agent/my-rules",
+    "status": 200,
+    "code": 0,
+    "data_type": "object",
+    "keys": [
+      "content"
+    ]
+  },
+  "agent_sessions": {
+    "url": "/api/agent/sessions",
+    "status": 200,
+    "code": 0,
+    "data_type": "array",
+    "length": 0
+  },
+  "tokens": {
+    "url": "/api/tokens",
+    "status": 200,
+    "code": 0,
+    "data_type": "array",
+    "length": 1,
+    "sample_keys": [
+      "id",
+      "name",
+      "token_prefix",
+      "scope",
+      "default_set_id",
+      "expires_at",
+      "last_used_at",
+      "revoked_at",
+      "created_at"
+    ]
+  }
+}

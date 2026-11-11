@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>妆点管账 · 本地版</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <script type="module" crossorigin src="/assets/index-CfiOBNy5.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DBO0WYGM.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <style>
+      /* 侧栏「文件格式转换」入口：独立页面，不侵入 SPA 路由与 minified bundle */
+      .zd-convert-item { display:flex; align-items:center; gap:12px; height:50px; padding:0 20px;
+        color:#4a2438; font-size:14px; text-decoration:none; cursor:pointer; white-space:nowrap;
+        transition:background .2s,color .2s; }
+      .zd-convert-item:hover { background:#fce9f2; color:#742a54; }
+      .zd-convert-item svg { width:18px; height:18px; flex:none; stroke:#9b7189; }
+      .zd-convert-item:hover svg { stroke:#d870a0; }
+      .zd-convert-item.zd-collapsed { padding:0; justify-content:center; }
+      .zd-convert-item.zd-collapsed .zd-txt { display:none; }
+    </style>
+    <!-- 意图追问工具：必须在 SPA bundle 之前同步执行，以便拦截 chat 响应流。
+         版本号随每次改动递增，配合 server.mjs 的 no-store 保证刷新后一定加载最新脚本 -->
+    <script src="/clarify.js?v=20261111e"></script>
+    <script>
+      (function () {
+        var HREF = '/convert.html';
+        var SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>';
+        function mount() {
+          var menu = document.querySelector('.app-menu');
+          if (!menu) return false;
+          var a = menu.querySelector('[data-zd-convert]');
+          if (!a) {
+            a = document.createElement('a');
+            a.className = 'zd-convert-item';
+            a.setAttribute('data-zd-convert', '1');
+            a.href = HREF;
+            a.title = '手动修改文件格式';
+            a.innerHTML = SVG + '<span class="zd-txt">文件格式转换</span>';
+            menu.appendChild(a);
+          }
+          a.classList.toggle('zd-collapsed', menu.classList.contains('el-menu--collapse'));
+          return true;
+        }
+        var t = setInterval(function () { if (mount()) clearInterval(t); }, 200);
+        setTimeout(function () { clearInterval(t); }, 15000);
+        // Vue 重渲染删掉注入节点时自动补回
+        new MutationObserver(function () { mount(); })
+          .observe(document.body, { childList: true, subtree: true });
+      })();
+    </script>
+  </body>
+</html>

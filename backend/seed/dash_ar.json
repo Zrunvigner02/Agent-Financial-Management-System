@@ -1,0 +1,95 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "subjects": [
+      {
+        "code": "1122",
+        "name": "应收账款"
+      }
+    ],
+    "open": 0,
+    "borrow": 0,
+    "repay": 0,
+    "end": 0,
+    "turnoverDays": null,
+    "warnLine": null,
+    "turnoverEnabled": false,
+    "months": [
+      {
+        "period": "2025-12",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-01",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-02",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-03",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-04",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-05",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-06",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-07",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-08",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-09",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-10",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      },
+      {
+        "period": "2026-11",
+        "borrow": 0,
+        "repay": 0,
+        "end": 0
+      }
+    ],
+    "customers": []
+  }
+}

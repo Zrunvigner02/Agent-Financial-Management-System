@@ -1,0 +1,945 @@
+{
+  "code": 0,
+  "data": {
+    "found": true,
+    "period": "2026-11",
+    "items": [
+      {
+        "key": "output",
+        "name": "销项税额",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": true,
+        "formulas": [
+          {
+            "subjectIds": [
+              5981
+            ],
+            "rule": "period_credit",
+            "sign": 1,
+            "month": 0,
+            "subjects": [
+              {
+                "id": 5981,
+                "code": "22210102",
+                "name": "应交税费-应交增值税-销项税额"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "input",
+        "name": "进项税额",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": true,
+        "formulas": [
+          {
+            "subjectIds": [
+              5980
+            ],
+            "rule": "period_debit",
+            "sign": 1,
+            "month": 0,
+            "subjects": [
+              {
+                "id": 5980,
+                "code": "22210101",
+                "name": "应交税费-应交增值税-进项税额"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "vatPayable",
+        "name": "应交增值税",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": false,
+        "formulas": []
+      },
+      {
+        "key": "vatPaid",
+        "name": "实缴增值税",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": false,
+        "formulas": []
+      },
+      {
+        "key": "sur",
+        "name": "税金及附加",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": true,
+        "formulas": [
+          {
+            "subjectIds": [
+              6013
+            ],
+            "rule": "period_debit",
+            "sign": 1,
+            "month": 0,
+            "subjects": [
+              {
+                "id": 6013,
+                "code": "6403",
+                "name": "税金及附加"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "key": "cit",
+        "name": "企业所得税",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": false,
+        "formulas": []
+      },
+      {
+        "key": "iit",
+        "name": "个人所得税",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": false,
+        "formulas": []
+      },
+      {
+        "key": "other",
+        "name": "其他税费",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": false,
+        "formulas": []
+      },
+      {
+        "key": "endLiab",
+        "name": "期末应交税费",
+        "month": 0,
+        "ytd": 0,
+        "series": [
+          {
+            "period": "2025-12",
+            "value": 0
+          },
+          {
+            "period": "2026-01",
+            "value": 0
+          },
+          {
+            "period": "2026-02",
+            "value": 0
+          },
+          {
+            "period": "2026-03",
+            "value": 0
+          },
+          {
+            "period": "2026-04",
+            "value": 0
+          },
+          {
+            "period": "2026-05",
+            "value": 0
+          },
+          {
+            "period": "2026-06",
+            "value": 0
+          },
+          {
+            "period": "2026-07",
+            "value": 0
+          },
+          {
+            "period": "2026-08",
+            "value": 0
+          },
+          {
+            "period": "2026-09",
+            "value": 0
+          },
+          {
+            "period": "2026-10",
+            "value": 0
+          },
+          {
+            "period": "2026-11",
+            "value": 0
+          }
+        ],
+        "configured": true,
+        "formulas": [
+          {
+            "subjectIds": [
+              5978
+            ],
+            "rule": "end_balance",
+            "sign": -1,
+            "month": 0,
+            "subjects": [
+              {
+                "id": 5978,
+                "code": "2221",
+                "name": "应交税费"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "total": {
+      "key": "total",
+      "name": "全部计提",
+      "month": 0,
+      "ytd": 0,
+      "series": [
+        {
+          "period": "2025-12",
+          "value": 0
+        },
+        {
+          "period": "2026-01",
+          "value": 0
+        },
+        {
+          "period": "2026-02",
+          "value": 0
+        },
+        {
+          "period": "2026-03",
+          "value": 0
+        },
+        {
+          "period": "2026-04",
+          "value": 0
+        },
+        {
+          "period": "2026-05",
+          "value": 0
+        },
+        {
+          "period": "2026-06",
+          "value": 0
+        },
+        {
+          "period": "2026-07",
+          "value": 0
+        },
+        {
+          "period": "2026-08",
+          "value": 0
+        },
+        {
+          "period": "2026-09",
+          "value": 0
+        },
+        {
+          "period": "2026-10",
+          "value": 0
+        },
+        {
+          "period": "2026-11",
+          "value": 0
+        }
+      ],
+      "autoSum": true
+    },
+    "endLiab": 0,
+    "revenue": 0,
+    "taxRate": null,
+    "warnRate": null,
+    "overWarn": false,
+    "months": [
+      {
+        "period": "2025-12",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-01",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-02",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-03",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-04",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-05",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-06",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-07",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-08",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-09",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-10",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      },
+      {
+        "period": "2026-11",
+        "values": {
+          "output": 0,
+          "input": 0,
+          "vatPayable": 0,
+          "vatPaid": 0,
+          "sur": 0,
+          "cit": 0,
+          "iit": 0,
+          "other": 0,
+          "endLiab": 0,
+          "total": 0
+        },
+        "revenue": 0,
+        "taxRate": null
+      }
+    ],
+    "surBreakdown": [],
+    "rules": [
+      {
+        "key": "open_debit",
+        "name": "期初借方"
+      },
+      {
+        "key": "open_credit",
+        "name": "期初贷方"
+      },
+      {
+        "key": "open_balance",
+        "name": "期初余额"
+      },
+      {
+        "key": "period_debit",
+        "name": "本期借方"
+      },
+      {
+        "key": "period_credit",
+        "name": "本期贷方"
+      },
+      {
+        "key": "end_debit",
+        "name": "期末借方"
+      },
+      {
+        "key": "end_credit",
+        "name": "期末贷方"
+      },
+      {
+        "key": "end_balance",
+        "name": "期末余额"
+      }
+    ],
+    "itemDefs": [
+      {
+        "key": "output",
+        "name": "销项税额",
+        "defaultRule": "period_credit"
+      },
+      {
+        "key": "input",
+        "name": "进项税额",
+        "defaultRule": "period_debit"
+      },
+      {
+        "key": "vatPayable",
+        "name": "应交增值税",
+        "defaultRule": "period_credit"
+      },
+      {
+        "key": "vatPaid",
+        "name": "实缴增值税",
+        "defaultRule": "period_debit"
+      },
+      {
+        "key": "sur",
+        "name": "税金及附加",
+        "defaultRule": "period_debit"
+      },
+      {
+        "key": "cit",
+        "name": "企业所得税",
+        "defaultRule": "period_credit"
+      },
+      {
+        "key": "iit",
+        "name": "个人所得税",
+        "defaultRule": "period_credit"
+      },
+      {
+        "key": "other",
+        "name": "其他税费",
+        "defaultRule": "period_credit"
+      },
+      {
+        "key": "endLiab",
+        "name": "期末应交税费",
+        "defaultRule": "end_balance"
+      }
+    ]
+  }
+}

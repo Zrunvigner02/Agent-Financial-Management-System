@@ -1,0 +1,169 @@
+{
+  "at": "2026-11-11T09:44:44.888Z",
+  "db": "C:\\Users\\Administrator\\WorkBuddy\\工作区3\\jinli-finance\\backend\\data\\jinli.db",
+  "base": "http://127.0.0.1:8000",
+  "period": "2026-11",
+  "rounds": 3,
+  "consistent": true,
+  "consistentDetail": "3 轮结果完全一致",
+  "compareOk": true,
+  "compareDetail": "未指定 --compare",
+  "result": {
+    "at": "2026-11-11T09:44:44.888Z",
+    "period": "2026-11",
+    "setId": 85,
+    "passed": 17,
+    "total": 17,
+    "error_count": 0,
+    "warn_count": 0,
+    "ok": true,
+    "checks": [
+      {
+        "name": "必需数据表齐全",
+        "ok": true,
+        "level": "pass",
+        "detail": "9 张核心表存在"
+      },
+      {
+        "name": "逐张凭证借贷平衡且金额大于 0",
+        "ok": true,
+        "level": "pass",
+        "detail": "0 张凭证全部平衡"
+      },
+      {
+        "name": "单行分录不同时记借贷",
+        "ok": true,
+        "level": "pass",
+        "detail": "0 行分录合规"
+      },
+      {
+        "name": "金额精度（非负、最多两位小数）",
+        "ok": true,
+        "level": "pass",
+        "detail": "全部金额以分为最小单位且非负"
+      },
+      {
+        "name": "无孤儿分录",
+        "ok": true,
+        "level": "pass",
+        "detail": "分录均关联到有效凭证"
+      },
+      {
+        "name": "无空凭证",
+        "ok": true,
+        "level": "pass",
+        "detail": "每张凭证至少 2 行"
+      },
+      {
+        "name": "每张凭证至少两条分录",
+        "ok": true,
+        "level": "pass",
+        "detail": "分录条数合规"
+      },
+      {
+        "name": "凭证号在账套+期间+字内唯一",
+        "ok": true,
+        "level": "pass",
+        "detail": "无重复凭证号"
+      },
+      {
+        "name": "凭证日期与会计期间一致",
+        "ok": true,
+        "level": "pass",
+        "detail": "期间与日期一致"
+      },
+      {
+        "name": "凭证状态合法",
+        "ok": true,
+        "level": "pass",
+        "detail": "状态取值合法"
+      },
+      {
+        "name": "分录科目代码存在于科目表",
+        "ok": true,
+        "level": "pass",
+        "detail": "科目表 131 个代码，分录全部命中"
+      },
+      {
+        "name": "两套独立 SQL 重算指标一致",
+        "ok": true,
+        "level": "pass",
+        "detail": "{\"revenue\":0,\"cost\":0,\"expense\":0,\"profit\":0,\"capital\":0,\"ar\":0,\"ap\":0,\"tax\":0}"
+      },
+      {
+        "name": "全期借方合计 = 贷方合计",
+        "ok": true,
+        "level": "pass",
+        "detail": "借 0 / 贷 0 元"
+      },
+      {
+        "name": "看板接口数值 = 数据库独立重算",
+        "ok": true,
+        "level": "pass",
+        "detail": "接口与库内明细一致"
+      },
+      {
+        "name": "前端金额单位换算（元，无多除 100）",
+        "ok": true,
+        "level": "pass",
+        "detail": "全部 chunk 已按「元」换算"
+      },
+      {
+        "name": "无测试痕迹凭证",
+        "ok": true,
+        "level": "pass",
+        "detail": "未发现测试特征凭证"
+      },
+      {
+        "name": "干净基线：无业务凭证且看板全零",
+        "ok": true,
+        "level": "pass",
+        "detail": "凭证 0 张 / 分录 0 行 / 指标 {\"revenue\":0,\"cost\":0,\"expense\":0,\"profit\":0,\"capital\":0,\"ar\":0,\"ap\":0,\"tax\":0}"
+      }
+    ],
+    "snapshot": {
+      "counts": {
+        "sets": 1,
+        "users": 2,
+        "subjects": 131,
+        "vouchers": 0,
+        "voucher_entries": 0,
+        "closings": 0,
+        "sessions": 56,
+        "agent_sessions": 0,
+        "agent_messages": 0,
+        "agent_attachments": 0,
+        "agent_clarify": 0,
+        "agent_clarify_prefs": 1,
+        "open_tokens": 1
+      },
+      "metrics": {
+        "revenue": 0,
+        "cost": 0,
+        "expense": 0,
+        "profit": 0,
+        "capital": 0,
+        "ar": 0,
+        "ap": 0,
+        "tax": 0
+      },
+      "totals": {
+        "debit": 0,
+        "credit": 0
+      },
+      "setNames": [
+        {
+          "id": 85,
+          "name": "振颜丽舍"
+        }
+      ],
+      "subjectCount": 131
+    },
+    "snapshotHash": "233d2d0363a4d583"
+  },
+  "history": [
+    "233d2d0363a4d583",
+    "233d2d0363a4d583",
+    "233d2d0363a4d583"
+  ]
+}

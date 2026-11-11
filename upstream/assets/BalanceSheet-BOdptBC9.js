@@ -1,0 +1,1 @@
+import{R as e}from"./ReportView-jCAhXqxn.js";import{d as t,D as r,c as o}from"./index-CfiOBNy5.js";import"./exportCsv-ySA49PdJ.js";import"./subject-CPcRyt5O.js";import"./money-DgxEMOJz.js";import"./fitColumns-C0yr4t2j.js";const f=t({name:"/report/balance-sheet",__name:"BalanceSheet",setup(a){return(p,n)=>(o(),r(e,{"report-type":"balance"}))}});export{f as default};

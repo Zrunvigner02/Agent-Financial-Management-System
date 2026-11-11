@@ -1,0 +1,26 @@
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": 64,
+        "name": "档案测试员",
+        "description": "权限验证用",
+        "created_at": "2026-09-03 10:25:52"
+      },
+      {
+        "id": 62,
+        "name": "会计",
+        "description": "做账的",
+        "created_at": "2026-09-01 06:05:23"
+      },
+      {
+        "id": 61,
+        "name": "出纳",
+        "description": "付钱的",
+        "created_at": "2026-09-01 06:04:44"
+      }
+    ],
+    "total": 3
+  }
+}

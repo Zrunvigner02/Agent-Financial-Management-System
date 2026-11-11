@@ -1,0 +1,35 @@
+{
+  "code": 0,
+  "data": {
+    "list": [
+      {
+        "id": "month-end-check",
+        "name": "月末结账检查",
+        "desc": "检查指定期间结账条件：结账状态、未记账/草稿凭证、待做账发票，生成结账前检查清单",
+        "icon": "Finished",
+        "inputs": [
+          {
+            "key": "period",
+            "label": "期间",
+            "type": "month",
+            "default": "month"
+          }
+        ]
+      },
+      {
+        "id": "monthly-overview",
+        "name": "月度经营摘要",
+        "desc": "汇总指定期间：发票收支、科目余额情况，输出经营概况",
+        "icon": "TrendCharts",
+        "inputs": [
+          {
+            "key": "period",
+            "label": "期间",
+            "type": "month",
+            "default": "month"
+          }
+        ]
+      }
+    ]
+  }
+}

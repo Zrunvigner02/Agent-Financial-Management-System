@@ -1,0 +1,113 @@
+{
+  "at": "2026-11-11T08:26:04.164Z",
+  "base": "http://127.0.0.1:5173",
+  "period": "2026-11",
+  "results": [
+    {
+      "name": "capital",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": 10000,
+      "month": null,
+      "keys": 9
+    },
+    {
+      "name": "revenue",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": null,
+      "month": 10000,
+      "keys": 6
+    },
+    {
+      "name": "cost",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": null,
+      "month": 0,
+      "keys": 13
+    },
+    {
+      "name": "profit",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": null,
+      "month": 10000,
+      "keys": 6
+    },
+    {
+      "name": "expense",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": null,
+      "month": 0,
+      "keys": 15
+    },
+    {
+      "name": "tax",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": 0,
+      "month": null,
+      "keys": 13
+    },
+    {
+      "name": "ar",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": null,
+      "month": null,
+      "keys": 12
+    },
+    {
+      "name": "ap",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": null,
+      "month": null,
+      "keys": 12
+    },
+    {
+      "name": "capital-detail",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": {
+        "open": 0,
+        "inflow": 10000,
+        "outflow": 0,
+        "end": 10000
+      },
+      "month": null,
+      "keys": 7
+    },
+    {
+      "name": "ar-aging",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": 0,
+      "month": null,
+      "keys": 7
+    },
+    {
+      "name": "ap-aging",
+      "status": 200,
+      "code": 0,
+      "found": true,
+      "total": 0,
+      "month": null,
+      "keys": 6
+    }
+  ],
+  "passed": 11,
+  "summary": "11/11 sections OK"
+}

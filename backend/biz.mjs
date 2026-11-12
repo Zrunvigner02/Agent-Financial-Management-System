@@ -18,6 +18,25 @@ const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
 const USERNAME_RE = /^[A-Za-z0-9_\u4e00-\u9fa5]{3,20}$/;
 
+/**
+ * 注册来源策略：由 .env 的 REGISTER_MODE 控制，不写死。
+ *   open   —— 任何来源都能注册（默认，便于迁移到新设备）
+ *   local  —— 仅本机（127.0.0.1 / ::1）
+ *   closed —— 完全关闭，只能命令行建号
+ * 返回 { allowed, mode, reason }
+ */
+export function registerPolicy(mode, ip) {
+  const m = String(mode || 'open').toLowerCase();
+  const local = ['127.0.0.1', '::1', 'localhost', '::ffff:127.0.0.1'].includes(String(ip || '').replace(/^::ffff:/, ''));
+  if (m === 'closed') return { allowed: false, mode: m, reason: '本系统已关闭注册，请联系管理员开号' };
+  if (m === 'local') {
+    return local
+      ? { allowed: true, mode: m, reason: '' }
+      : { allowed: false, mode: m, reason: '当前仅允许本机注册（REGISTER_MODE=local），如需放开请改 .env' };
+  }
+  return { allowed: true, mode: 'open', reason: '' };
+}
+
 export const isAdminUser = (user) => {
   if (!user) return false;
   if (user.deleted_at) return false;

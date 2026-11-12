@@ -103,6 +103,8 @@ function sendJson(res, status, body, extraHeaders = {}) {
 }
 
 const reply = (res, result, status = 200) => sendJson(res, status, result);
+/** 运行时配置：优先进程环境变量，其次 .env（支持热改，不用重启） */
+const runtimeEnv = (name, fallback = '') => process.env[name] || readEnv(name) || fallback;
 const bearer = (h) => (typeof h === 'string' && h.startsWith('Bearer ') ? h.slice(7).trim() : '');
 
 function sendDownload(res, filename, mime, buf) {
@@ -426,12 +428,12 @@ async function handle(req, res) {
     if (st.locked) return reply(res, biz.fail(`密码错误次数过多，账号已锁定至 ${st.until}`));
     return reply(res, biz.login(body, null, clientIp));
   }
-  // 注册只允许本机（桌面/本机浏览器）；局域网与远程一律拒绝
+  // 注册来源由 REGISTER_MODE 决定：open(默认) / local / closed
   if (p === '/api/auth/register' && method === 'POST') {
-    if (!isLocalClient) {
-      return reply(res, biz.fail('注册仅限本机操作，请到安装本系统的电脑上注册'));
-    }
-    return reply(res, biz.register(body, clientIp));
+    const policy = biz.registerPolicy(runtimeEnv('REGISTER_MODE', 'open'), clientIp);
+    if (!policy.allowed) return reply(res, biz.fail(policy.reason));
+    const r = biz.register(body, clientIp);
+    return reply(res, r);
   }
 
   const user = biz.userFromToken(bearer(req.headers.authorization));
@@ -792,6 +794,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`[zhuangdian-backend] http://${HOST}:${PORT}  db=backend/data/jinli.db  set=${DEFAULT_SET_ID}`);
+  console.log(`[auth] 注册模式 REGISTER_MODE=${runtimeEnv('REGISTER_MODE', 'open')}（open=任何来源 / local=仅本机 / closed=关闭）`);
   // 启动即清理过期会话，此后每小时一次
   try { const n = biz.pruneSessions(); if (n) console.log(`[auth] 清理过期会话 ${n} 条`); } catch { /* 首启无表时忽略 */ }
   setInterval(() => { try { biz.pruneSessions(); } catch { /* 忽略 */ } }, 3600000).unref();

@@ -129,6 +129,15 @@ check('普通用户按分配账套限制，管理员不受限', () => {
   assert.equal(biz.canWrite(admin), true);
 });
 
+check('注册来源策略可配置（open/local/closed）', () => {
+  assert.equal(biz.registerPolicy('open', '192.168.1.20').allowed, true);
+  assert.equal(biz.registerPolicy('local', '192.168.1.20').allowed, false);
+  assert.equal(biz.registerPolicy('local', '127.0.0.1').allowed, true);
+  assert.equal(biz.registerPolicy('closed', '127.0.0.1').allowed, false);
+  assert.equal(biz.registerPolicy(undefined, '0.0.0.0').allowed, true, '默认 open');
+  assert.match(biz.registerPolicy('closed', '127.0.0.1').reason, /关闭注册/);
+});
+
 check('过期会话清理可用', () => {
   assert.equal(typeof biz.pruneSessions(), 'number');
 });

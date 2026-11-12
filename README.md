@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.2.0-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.1-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -176,7 +176,15 @@ npm run dev
 
 ## 👤 账号与权限
 
-**注册**：只允许在安装本系统的机器上注册（`127.0.0.1`），局域网与远程一律拒绝。注册时可自选角色：
+**注册**：来源由 `.env` 的 `REGISTER_MODE` 控制，不写死：
+
+| 取值 | 含义 | 适用场景 |
+| --- | --- | --- |
+| `open`（默认） | 任何来源都能注册 | 迁移到新设备、局域网内让同事自助开号 |
+| `local` | 仅本机 `127.0.0.1` | 单机自用，最保守 |
+| `closed` | 完全关闭 | 只允许 `npm run account -- register` 建号 |
+
+注册时可自选角色：
 
 - **管理员**：全部权限，含账号、角色、账套、模型配置
 - **普通用户**：只读。可看账簿与三大报表、可用智能体问答，但不能记账、不能改系统设置
@@ -202,8 +210,14 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 
 1. 新机装 Node.js 22+，拷项目（不带 `node_modules/`、`.local/`、`logs/`）
 2. 拷 `backend/data/jinli.db` 与 `.env`
-3. `npm run dev`，用原账号登录；若是全新库，初始管理员密码在 `.local/local-admin.txt`
+3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
+
+## 🆕 1.2.1 更新
+
+- **注册不再写死本机**：`REGISTER_MODE=open|local|closed` 三档可配，默认 `open`，改 `.env` 即时生效（无需重启）
+- 启动日志打印当前注册模式，避免「以为开着其实关着」
+- 单测新增注册策略覆盖（三种模式 + 默认值），共 11 项
 
 ## 🆕 1.2.0 更新
 
@@ -275,7 +289,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 数据审计（三轮） | 17 / 17，快照哈希一致 |
 | 真实 Chrome UI 验证 | 38 / 38，零 JS 异常、零 4xx/5xx |
 | 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
-| 账号体系单测 | 10 / 10（注册、锁定、踢线、过期、删除确认、越权） |
+| 账号体系单测 | 11 / 11（注册策略、锁定、踢线、过期、删除确认、越权） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -290,6 +304,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.2.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.2.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

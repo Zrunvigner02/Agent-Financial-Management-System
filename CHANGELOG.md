@@ -1,5 +1,16 @@
 # 更新日志
 
+## [1.1.1] — 2026-11-12
+
+### 新增
+
+- **三大报表**：`backend/reports.mjs` 提供资产负债表 / 利润表 / 现金流量表计算，`GET /api/reports/{type}?period=` 返回与前端一致的行结构（`code/name/kind/side/level/v1/v2`）。
+- **模板与公式**：`report_templates` 落库，支持 `PUT /api/reports/{type}/items`、`POST /api/reports/{type}/reset`、`GET /api/reports/balance/default-formulas`；默认模板按小企业会计准则预置。
+- **安全公式引擎**：自研递归下降解析，仅允许四则运算与 `QC/QM/QY/JE/DE/JEL/DEL`；不使用 eval，非法公式保存即拒，计算异常降级为 0 并告警。
+- **往来重分类**：应收贷方余额→预收、应付借方余额→预付，开关存 `report_settings`。
+- **导出与 MCP**：`get_report` 新增 `balance/income/cash`，导出中心支持五种格式；MCP 工具枚举同步扩展。
+- **测试**：`tools/test-reports.mjs` 11 项单元测试；`tools/shoot-readme.mjs` 支持三大报表页面截图。
+
 ## [1.1.0] — 2026-11-12
 
 ### 新增

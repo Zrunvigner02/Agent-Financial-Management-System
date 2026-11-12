@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.1.0-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -28,7 +28,8 @@
 | --- | --- |
 | 📊 **账务核心** | 多账套隔离、科目表、凭证录入与校验、期初期末、余额与明细账、经营看板 |
 | 🤖 **AI 智能体** | DeepSeek 接入、账套上下文注入、工具调用、逐步反问对准需求 |
-| 📄 **报表中心** | 凭证 / 余额 / 明细等报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
+| 📄 **三大报表** | 资产负债表 / 利润表 / 现金流量表，模板与公式可编辑、支持往来重分类 |
+| 📤 **导出中心** | 凭证 / 余额 / 明细 / 三大报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
 | 🔁 **格式转换** | 兼容 Filee CLI 协议的本地零依赖实现，产出 PDF / DOCX / ODS / RTF / 图片等 |
 | 🔌 **MCP 对接** | `POST /mcp`（streamableHttp）+ stdio 兜底桥，可被 WorkBuddy 等客户端直接调用 |
 | 🛡 **数据严谨** | 17 项独立审计、多轮核验、稳定快照哈希、隔离测试与可回滚清理 |
@@ -49,6 +50,23 @@
 <div align="center"><img src="docs/images/agent.png" alt="智能体工作台" width="100%"></div>
 
 左侧会话列表按账套隔离，会话标题自动生成可人工改名；右侧对话支持附件、技能快捷入口与逐步反问。
+
+### 会计报表
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/balance-sheet.png" alt="资产负债表"></td>
+<td width="50%"><img src="docs/images/income.png" alt="利润表"></td>
+</tr>
+<tr>
+<td align="center">资产负债表（期末 / 年初，支持往来重分类）</td>
+<td align="center">利润表（本期 / 本年累计）</td>
+</tr>
+</table>
+
+<div align="center"><img src="docs/images/cash-flow.png" alt="现金流量表" width="70%"></div>
+
+三张表的行项目、公式、层级全部落库：默认按小企业会计准则预置，可在线调整公式、增删行、恢复默认；公式是自研安全表达式（不使用 eval），只允许四则运算与 7 个取数函数，保存前即校验。
 
 ### 账簿与结账
 
@@ -155,6 +173,15 @@ npm run dev
 
 ---
 
+## 🆕 1.1.1 更新
+
+- **补齐三大报表**：资产负债表 / 利润表 / 现金流量表接入本地后端，`GET /api/reports/{balance|income|cash}?period=` 返回与前端一致的行结构，页面不再空白
+- **模板与公式可编辑**：`PUT /api/reports/{type}/items`、`POST .../reset`、`GET /api/reports/balance/default-formulas`，行项目、公式、层级、排序全部落库（`report_templates`）
+- **安全公式引擎**：自研递归下降解析，只允许 `+ - * / ()` 与 `QC/QM/QY/JE/DE/JEL/DEL` 七个取数函数，**不使用 eval**；非法公式保存即拒、计算时降级为 0 并给出告警
+- **往来重分类**：应收贷方余额转预收、应付借方余额转预付，开关持久化（`report_settings`）
+- **导出**：三大报表接入导出中心，`get_report` 新增 `balance/income/cash` 三种 kind，支持 xlsx/csv/json/md/html
+- **单元测试**：`tools/test-reports.mjs` 11 项（取数口径、行间引用、借贷方向、公式安全、重分类、模板读写、非法输入）
+
 ## 🆕 1.1.0 更新
 
 - **助理会话回写**：WorkBuddy 本地助理（网页 / 微信 / 企微）的每轮对话自动写入智能体历史，一天一条会话，逐条带 `[HH:MM]` 时间戳与本地时间，幂等去重
@@ -205,6 +232,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 数据完整性专项 | 19 / 19 |
 | 数据审计（三轮） | 17 / 17，快照哈希一致 |
 | 真实 Chrome UI 验证 | 38 / 38，零 JS 异常、零 4xx/5xx |
+| 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -219,6 +247,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.1.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.1.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

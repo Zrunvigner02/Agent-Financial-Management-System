@@ -257,6 +257,32 @@ CREATE TABLE IF NOT EXISTS agent_attachments (
   rows INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+
+/* 三大报表模板：未自定义时用内置默认模板，自定义后按库里的行计算 */
+CREATE TABLE IF NOT EXISTS report_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  side TEXT NOT NULL DEFAULT 'left',
+  code TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'item',
+  level INTEGER NOT NULL DEFAULT 1,
+  formula TEXT NOT NULL DEFAULT '',
+  formula2 TEXT NOT NULL DEFAULT '',
+  sort INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_report_templates_set ON report_templates(set_id, type);
+
+/* 报表级设置：目前只存资产负债表的重分类开关 */
+CREATE TABLE IF NOT EXISTS report_settings (
+  set_id INTEGER NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (set_id, key)
+);
 `);
 
 export const now = () => new Date().toISOString().replace('T', ' ').slice(0, 19);

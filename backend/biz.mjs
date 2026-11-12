@@ -958,8 +958,10 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     // WorkBuddy 等 MCP 调用方拿到的 columns/rows 可直接用于录入、比对或再加工。
     case 'get_report': {
       const alias = {
-        'balance-sheet': 'ledger', balance: 'ledger', 'trial-balance': 'ledger',
-        overview: 'dashboard', profit: 'dashboard', 'subject-list': 'subjects',
+        'balance-sheet': 'balance', balance: 'balance', 'trial-balance': 'ledger',
+        'income-statement': 'income', income: 'income', profit: 'income',
+        'cash-flow': 'cash', cash: 'cash', cashflow: 'cash',
+        overview: 'dashboard', 'subject-list': 'subjects',
       };
       const raw = String(args.kind || args.type || 'vouchers').trim();
       const kind = alias[raw.toLowerCase()] || raw;

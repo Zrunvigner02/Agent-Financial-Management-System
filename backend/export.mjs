@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { inflateRawSync } from 'node:zlib';
 import { DatabaseSync } from 'node:sqlite';
+import { reportTable as buildStatementTable } from './reports.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DB_PATH = path.join(ROOT, 'backend', 'data', 'jinli.db');
@@ -179,6 +180,10 @@ function queryDashboard(db, setId, period) {
 const BUILDERS = {
   vouchers: queryVouchers, ledger: queryLedger,
   dashboard: queryDashboard, subjects: querySubjects,
+  // 三大报表：与 /api/reports/{type} 共用同一套计算引擎，保证页面与导出完全一致
+  balance: (db, setId, period) => buildStatementTable(db, setId, 'balance', period),
+  income: (db, setId, period) => buildStatementTable(db, setId, 'income', period),
+  cash: (db, setId, period) => buildStatementTable(db, setId, 'cash', period),
 };
 
 /* ---------------- 渲染 ---------------- */

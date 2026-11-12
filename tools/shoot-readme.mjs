@@ -27,6 +27,9 @@ const PORT = 9333;
 const PAGES = {
   '/dashboard': 'dashboard.png',
   '/agent': 'agent.png',
+  '/report/balance-sheet': 'balance-sheet.png',
+  '/report/income': 'income.png',
+  '/report/cash-flow': 'cash-flow.png',
   '/ledger': 'ledger.png',
   '/closing/index': 'closing.png',
 };
@@ -68,6 +71,7 @@ function connect(wsUrl) {
     }
   };
   const send = (method, params = {}) => new Promise((resolve, reject) => {
+    if (method === 'Page.navigate') console.error('[nav]', JSON.stringify(params));
     const id = ++seq;
     pending.set(id, (m) => (m.error ? reject(new Error(`${method}: ${m.error.message}`)) : resolve(m.result)));
     ws.send(JSON.stringify({ id, method, params }));
@@ -122,7 +126,9 @@ try {
         return true; })()`,
       awaitPromise: true,
     });
-    await send('Page.navigate', { url: `${BASE}${route}` });
+    const target_ = `${BASE}${route}`;
+    if (!/^https?:\/\/[^\s]+$/.test(target_)) throw new Error(`非法截图地址：${target_}`);
+    await send('Page.navigate', { url: target_ });
     await sleep(4200);
     const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     fs.writeFileSync(path.join(OUT, name), Buffer.from(shot.data, 'base64'));

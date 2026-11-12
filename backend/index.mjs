@@ -11,6 +11,7 @@ import * as skills from './skills.mjs';
 import * as clarify from './clarify.mjs';
 import * as attachment from './attachment.mjs';
 import * as sessionTitle from './session-title.mjs';
+import * as rpt from './reports.mjs';
 
 const PORT = Number(process.env.LOCAL_BACKEND_PORT || 8000);
 const HOST = process.env.LOCAL_BACKEND_HOST || '127.0.0.1';
@@ -70,7 +71,7 @@ const TOOL_SCHEMAS = {
     properties: {
       kind: {
         type: 'string',
-        enum: ['vouchers', 'ledger', 'dashboard', 'subjects'],
+        enum: ['vouchers', 'ledger', 'dashboard', 'subjects', 'balance', 'income', 'cash'],
         description: '报表类型：凭证清单 / 科目余额表 / 经营概览 / 会计科目表',
       },
       period: { type: 'string', description: '期间 YYYY-MM，留空取当前月' },
@@ -586,6 +587,41 @@ async function handle(req, res) {
 
   // 智能体会话：列表 / 新建 / 消息 / 重命名 / 置顶 / 删除 / 标题精修
   if (p === '/api/agent/sessions' && method === 'GET') return reply(res, biz.agentSessions(setId));
+  // 三大报表：资产负债 / 利润 / 现金流。只读计算 + 模板读写 + 重分类开关
+  if (p === '/api/reports/balance/default-formulas' && method === 'GET') {
+    return reply(res, biz.ok({ rows: rpt.defaultTemplates('balance') }));
+  }
+  if (p === '/api/reports/balance/reclassify' && method === 'POST') {
+    try {
+      const on = rpt.setReclass(db, setId, Boolean(body && body.on));
+      return reply(res, biz.ok({ reclassOn: on }, on ? '已开启重分类' : '已关闭重分类'));
+    } catch (e) { return reply(res, biz.fail(e.message)); }
+  }
+  m = p.match(/^\/api\/reports\/([a-z]+)\/items$/);
+  if (m && method === 'PUT') {
+    try {
+      const n = rpt.saveTemplates(db, setId, m[1], body && body.items);
+      return reply(res, biz.ok({ saved: n }, `已保存 ${n} 行`));
+    } catch (e) { return reply(res, biz.fail(e.message)); }
+  }
+  m = p.match(/^\/api\/reports\/([a-z]+)\/reset$/);
+  if (m && method === 'POST') {
+    try {
+      const n = rpt.resetTemplates(db, setId, m[1]);
+      return reply(res, biz.ok({ reset: n }, '已恢复默认模板'));
+    } catch (e) { return reply(res, biz.fail(e.message)); }
+  }
+  m = p.match(/^\/api\/reports\/([a-z]+)$/);
+  if (m && method === 'GET') {
+    try {
+      const out = rpt.computeReport(db, setId, m[1], q.period || new Date().toISOString().slice(0, 7));
+      return reply(res, biz.ok({
+        type: out.type, period: out.period, title: out.title,
+        rows: out.rows, warnings: out.warnings,
+        reclassOn: out.type === 'balance' ? rpt.getReclass(db, setId) : false,
+      }));
+    } catch (e) { return reply(res, biz.fail(e.message)); }
+  }
   // 活跃度快照：桌面端轮询用，只回计数，体积极小
   if (p === '/api/agent/activity' && method === 'GET') return reply(res, biz.agentActivity(setId));
   if (p === '/api/agent/sessions' && method === 'POST') return reply(res, biz.createAgentSession(setId, body.title));

@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.2.1-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.2-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -16,7 +16,7 @@
 后端零外部 npm 依赖，基于 Node.js 内置模块与 `node:sqlite`；前端为已构建静态资源；桌面端为 Electron 外壳。
 **所有业务数据留在本地 SQLite，不上云、不需要联网记账。**
 
-<img src="docs/images/dashboard.png" alt="经营看板" width="100%">
+<img src="docs/images/desktop-dashboard.png" alt="妆点管账 · 数据看板" width="100%">
 
 </div>
 
@@ -35,6 +35,7 @@
 | 👤 **账号与权限** | 本机注册、管理员 / 普通用户自选、只读与记账分权、两阶段删除确认 |
 | 🛡 **数据严谨** | 17 项独立审计、多轮核验、稳定快照哈希、隔离测试与可回滚清理 |
 | 🖥 **桌面端** | Electron 外壳，托盘常驻，静默拉起本地服务，无黑框无公网依赖 |
+| 📱 **手机端助理** | 微信 / 企微文本通道，记账查账要文件；对话自动回写、跨端可续 |
 
 ---
 
@@ -42,15 +43,26 @@
 
 ### 经营看板
 
-<div align="center"><img src="docs/images/dashboard.png" alt="经营看板" width="100%"></div>
+<div align="center"><img src="docs/images/desktop-dashboard.png" alt="桌面端 · 数据看板" width="100%"></div>
 
 资金总额、营业收入、成本、费用、利润、应收应付、税金一屏呈现，配 12 个月趋势与年度维度明细；金额单位统一为元，看板按万元展示。
 
 ### 智能体工作台
 
-<div align="center"><img src="docs/images/agent.png" alt="智能体工作台" width="100%"></div>
+<div align="center"><img src="docs/images/desktop-agent.png" alt="桌面端 · 智能体工作台" width="100%"></div>
 
-左侧会话列表按账套隔离，会话标题自动生成可人工改名；右侧对话支持附件、技能快捷入口与逐步反问。
+左侧按账套隔离的会话列表，会话标题自动生成、可人工改名；右侧对话支持附件解析、技能快捷入口、意图追问，底部直接切换「月末结账检查 / 月度经营概览」等技能。同一段对话、同一套工具，桌面端点选、手机端打字，结果一致。
+
+### 手机端助理（微信 / 企微）
+
+<div align="center"><img src="docs/images/mobile-wechat.jpg" alt="手机端 · 微信助理" width="300"></div>
+
+同一套账套、同一个智能体，通过 WorkBuddy 本地助理接到微信 / 企业微信，手机上就能记账、查报表、要文件。
+
+- **纯文本通道**：手机端不支持可点击选项卡，追问以编号形式给出，回「1」「2」即可
+- **文件照样出**：要 Excel / CSV，手机上直接收到下载文件
+- **对话留痕**：每轮对话自动回写为妆点智能体会话（按天一条，逐条带时间戳），桌面端可见
+- **跨端补齐**：手机每轮开始会把桌面端新增对话一并带出，两边不会各说各话
 
 ### 会计报表
 
@@ -213,6 +225,11 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.2.2 更新
+
+- README 换上桌面端实拍图（数据看板、智能体工作台），新增「手机端助理」章节与微信实测截图
+- 界面一览补充跨端说明：桌面端点选、手机端编号输入，同一账套同一套工具
+
 ## 🆕 1.2.1 更新
 
 - **注册不再写死本机**：`REGISTER_MODE=open|local|closed` 三档可配，默认 `open`，改 `.env` 即时生效（无需重启）
@@ -304,6 +321,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.2.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.2.2** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

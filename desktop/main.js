@@ -31,6 +31,7 @@ let recovering = false;   // 后端自愈守护的重入保护
 let auth = null;         // 登录态（仅内存）
 let setId = '';
 let headerHookInstalled = false;
+let liveRefreshInstalled = false;
 const owned = [];        // 本进程亲自拉起的服务；退出时只清理这些
 
 function stamp() {
@@ -206,6 +207,54 @@ function installHeaderHook() {
   log('API 请求头兜底注入已启用');
 }
 
+/**
+ * 会话活跃度监听：页面本身不轮询，本地助理新写入的对话要刷新才看得到。
+ * 这里注入一个轻量轮询（7 秒一次 /api/agent/activity），有变化时右下角浮出提示条，
+ * 用户点一下才 reload —— 不打断正在输入或正在流式回答的对话。
+ */
+const LIVE_REFRESH_JS = `(() => {
+  if (window.__jlLiveTipInstalled) return;
+  window.__jlLiveTipInstalled = true;
+  let sig = '';
+  let tip = null;
+  const showTip = () => {
+    if (tip && document.body.contains(tip)) return;
+    tip = document.createElement('div');
+    tip.textContent = '有新的助理对话，点此刷新';
+    tip.style.cssText = [
+      'position:fixed', 'right:20px', 'bottom:20px', 'z-index:2147483647',
+      'background:#742a54', 'color:#fff', 'font-size:13px', 'line-height:1',
+      'padding:10px 14px', 'border-radius:999px', 'cursor:pointer',
+      'box-shadow:0 6px 20px rgba(0,0,0,.25)', 'user-select:none',
+      'font-family:-apple-system,"Microsoft YaHei",sans-serif'
+    ].join(';');
+    tip.onclick = () => location.reload();
+    document.body.appendChild(tip);
+  };
+  const check = async () => {
+    try {
+      const r = await fetch('/api/agent/activity', { cache: 'no-store' });
+      if (!r.ok) return;
+      const body = await r.json();
+      const d = (body && body.data) || {};
+      const next = String(d.total || 0) + ':' + String(d.last_id || 0);
+      if (!sig) { sig = next; return; }
+      if (next !== sig) { sig = next; showTip(); }
+    } catch (e) { /* 后端重启期间忽略 */ }
+  };
+  setInterval(check, 7000);
+})()`;
+
+function installLiveRefresh() {
+  if (liveRefreshInstalled || !win) return;
+  liveRefreshInstalled = true;
+  win.webContents.on('did-finish-load', () => {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.executeJavaScript(LIVE_REFRESH_JS).catch(() => {});
+  });
+  log('助理会话活跃度提示已启用');
+}
+
 // ---------- 窗口 / 托盘 ----------
 function createWindow() {
   win = new BrowserWindow({
@@ -303,6 +352,7 @@ async function bootFlow(tag = '启动') {
     auth = await desktopLogin();
     setId = await resolveSetId(auth.token);
     installHeaderHook();
+    installLiveRefresh();
     setStatus(`${tag}：正在进入数据看板…`, 86);
 
     // 先在 http 源下建立页面上下文，注入会话，再进入受路由守卫保护的业务页

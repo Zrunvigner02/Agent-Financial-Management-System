@@ -21,6 +21,7 @@ __pycache__/
 
 # ===== 本地生成物 / 超大逆向产物 =====
 analysis/*.gz
+logs/
 *.tmp
 *.local-only.zip
 release/*.zip.tmp

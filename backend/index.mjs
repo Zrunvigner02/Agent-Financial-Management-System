@@ -586,6 +586,8 @@ async function handle(req, res) {
 
   // 智能体会话：列表 / 新建 / 消息 / 重命名 / 置顶 / 删除 / 标题精修
   if (p === '/api/agent/sessions' && method === 'GET') return reply(res, biz.agentSessions(setId));
+  // 活跃度快照：桌面端轮询用，只回计数，体积极小
+  if (p === '/api/agent/activity' && method === 'GET') return reply(res, biz.agentActivity(setId));
   if (p === '/api/agent/sessions' && method === 'POST') return reply(res, biz.createAgentSession(setId, body.title));
   m = p.match(/^\/api\/agent\/sessions\/([^/]+)\/messages$/);
   if (m && method === 'GET') return reply(res, biz.agentMessages(decodeURIComponent(m[1])));

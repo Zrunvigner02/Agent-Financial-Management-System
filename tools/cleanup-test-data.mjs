@@ -56,7 +56,13 @@ const keepBefore = Object.fromEntries(keep.map((t) => [t, count(t)]));
 console.log(`数据库: ${DB}`);
 console.log(`清理前快照 hash=${before.snapshotHash}`);
 console.log('\n=== 将删除 ===');
-for (const p of plan) console.log(`  ${p.table.padEnd(22)} ${String(count(p.table)).padStart(4)} 行  ${p.label}`);
+for (const p of plan) {
+  // 预览按真实将被删除的行数计（claw-* 会话与消息受保护）
+  const where = p.table === 'agent_messages' ? " WHERE session_id NOT LIKE 'claw-%'"
+    : p.table === 'agent_sessions' ? " WHERE id NOT LIKE 'claw-%'" : '';
+  const n = tables.includes(p.table) ? db.prepare(`SELECT COUNT(*) AS n FROM ${p.table}${where}`).get().n : 0;
+  console.log(`  ${p.table.padEnd(22)} ${String(n).padStart(4)} 行  ${p.label}`);
+}
 console.log('\n=== 保留（不得变动）===');
 for (const t of keep) console.log(`  ${t.padEnd(22)} ${String(count(t)).padStart(4)} 行`);
 const prefs = tables.includes('agent_clarify_prefs')
@@ -80,11 +86,17 @@ console.log(`如需回滚：node tools/cleanup-test-data.mjs --restore "${backup
 // --- 事务删除 ---
 const w = new DatabaseSync(DB);
 const deleted = {};
+// 本地助理回写的历史会话（id 以 claw- 开头）不算测试数据，清理时必须保留
+const KEEP_WHERE = {
+  agent_messages: "WHERE session_id NOT LIKE 'claw-%'",
+  agent_sessions: "WHERE id NOT LIKE 'claw-%'",
+};
 w.exec('BEGIN IMMEDIATE');
 try {
   for (const p of plan) {
     if (!tables.includes(p.table)) continue;
-    deleted[p.table] = w.prepare(`DELETE FROM ${p.table}`).run().changes;
+    const where = KEEP_WHERE[p.table] ? ` ${KEEP_WHERE[p.table]}` : '';
+    deleted[p.table] = w.prepare(`DELETE FROM ${p.table}${where}`).run().changes;
   }
   // 会话级偏好（scope 形如 session:xxx）删掉，全局偏好 scope='global' 保留
   if (tables.includes('agent_clarify_prefs')) {

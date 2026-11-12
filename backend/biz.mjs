@@ -816,6 +816,22 @@ export function saveAgentMessage(sessionId, role, content) {
     sessionId, role, content, now());
 }
 
+/**
+ * 会话活跃度快照：供桌面端做「有新对话就静默刷新」。
+ * 只返回计数与最大消息 id，不返回消息正文，轮询开销极小。
+ */
+export function agentActivity(setId) {
+  const rows = all(`SELECT m.session_id AS session_id, COUNT(*) AS messages,
+      MAX(m.id) AS last_id, MAX(m.created_at) AS last_at
+    FROM agent_messages m
+    JOIN agent_sessions s ON s.id = m.session_id
+    WHERE s.set_id = ?
+    GROUP BY m.session_id`, setId);
+  const total = rows.reduce((a, r) => a + Number(r.messages || 0), 0);
+  const lastId = rows.reduce((a, r) => Math.max(a, Number(r.last_id || 0)), 0);
+  return ok({ total, last_id: lastId, sessions: rows.length });
+}
+
 /* 智能体「知识 / 记忆」与「我的规则」。前端 knowledge 需要 { guide, memories }，
    rules / my-rules 需要 { content }；两者都按账套隔离。 */
 export function agentKnowledge(setId) {

@@ -1,5 +1,6 @@
 {
   "name": "jinli-finance-local",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,6 +12,9 @@
     "regression": "node tools/full-regression.mjs",
     "test:isolated": "node tools/isolated-run.mjs",
     "test:title": "node tools/test-session-title.mjs",
+    "claw:sync": "node tools/claw-sync.mjs",
+    "claw:watch": "node tools/claw-sync.mjs --watch",
+    "claw:pull": "node tools/desktop-pull.mjs",
     "audit": "node tools/data-audit.mjs --base http://127.0.0.1:8000 --rounds 3",
     "audit:clean": "node tools/data-audit.mjs --base http://127.0.0.1:8000 --rounds 3 --expect-clean",
     "cleanup:dry": "node tools/cleanup-test-data.mjs",

@@ -1,5 +1,14 @@
 # 更新日志
 
+## [1.1.0] — 2026-11-12
+
+### 新增
+
+- **本地助理会话回写**：`tools/claw-sync.mjs` 把 WorkBuddy 本地助理（Claw / 微信 / 企微）的对话增量写入妆点智能体会话历史。一天一条会话（`claw-YYYYMMDD`，标题「本地助理 · MM-DD」），每条消息带 `[HH:MM]` 前缀与本地时间 `created_at`；按转录事件 id 幂等去重，`--watch` 模式常驻监听，开机自启项 `zd-claw-sync.vbs`。
+- **删除不会被复活**：新增 `claw_deleted` 墓碑表与库级触发器 `claw_session_deleted`，用户在界面删掉某天的 `claw-*` 会话后，同步永久跳过；`--restore YYYYMMDD` / `--restore all` 可手动恢复。`cleanup-test-data.mjs` 也改为跳过所有 `claw-*` 会话与消息。
+- **会话活跃度接口**：`GET /api/agent/activity` 返回会话数、消息总数与最新消息 id；桌面端注入 7 秒轮询，有新对话时右下角浮出「有新的助理对话，点此刷新」，不打断正在进行的对话。
+- 只读写会话表（`agent_sessions` / `agent_messages` / `claw_sync_log`），不触碰任何账务数据表。
+
 ## [1.0.0] - 2026-11-11
 
 首个正式版本，完整打包本地财务系统、AI 智能体、Filee 格式转换、MCP 对接与桌面端。

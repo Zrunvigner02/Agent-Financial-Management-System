@@ -27,3 +27,6 @@ logs/
 release/*.zip.tmp
 .DS_Store
 Thumbs.db
+
+# 报表导出物（本地生成，不入库）
+exports/

@@ -418,14 +418,48 @@ async function handle(req, res) {
   }
   if (p === '/mcp') return sendJson(res, 405, { error: '请使用 POST 调用 MCP（JSON-RPC 2.0）' });
 
-  if (p === '/api/auth/login' && method === 'POST') return reply(res, biz.login(body));
-  if (p === '/api/auth/register' && method === 'POST') return reply(res, biz.register(body));
+  const clientIp = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+  const isLocalClient = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost';
+
+  if (p === '/api/auth/login' && method === 'POST') {
+    const st = biz.lockState(body.username, clientIp);
+    if (st.locked) return reply(res, biz.fail(`密码错误次数过多，账号已锁定至 ${st.until}`));
+    return reply(res, biz.login(body, null, clientIp));
+  }
+  // 注册只允许本机（桌面/本机浏览器）；局域网与远程一律拒绝
+  if (p === '/api/auth/register' && method === 'POST') {
+    if (!isLocalClient) {
+      return reply(res, biz.fail('注册仅限本机操作，请到安装本系统的电脑上注册'));
+    }
+    return reply(res, biz.register(body, clientIp));
+  }
 
   const user = biz.userFromToken(bearer(req.headers.authorization));
   if (!user) return sendJson(res, 401, { code: 401, message: '未登录或登录已过期' });
 
   const setId = biz.parseSetId(req.headers['x-set-id']);
   const actor = user.username;
+
+  if (p === '/api/auth/logout' && method === 'POST') {
+    return reply(res, biz.logout(bearer(req.headers.authorization)));
+  }
+
+  // 越权保护：管理类接口只允许管理员；账套数据需在当前用户可访问范围内
+  const ADMIN_ONLY = ['/api/accounts', '/api/roles', '/api/sets', '/api/tokens', '/api/agent/llm-config'];
+  if (ADMIN_ONLY.some((x) => p === x || p.startsWith(`${x}/`))) {
+    if (!biz.isAdminUser(user)) return sendJson(res, 403, { code: 403, message: '当前账号无管理权限' });
+  }
+  // 记账写操作：管理员或 会计/出纳 角色，普通用户只读
+  const WRITE_PREFIX = ['/api/vouchers', '/api/assets', '/api/invoices', '/api/subjects',
+    '/api/closing', '/api/auxiliaries', '/api/agent/actions'];
+  if (['POST', 'PUT', 'DELETE'].includes(method)
+    && WRITE_PREFIX.some((x) => p === x || p.startsWith(`${x}/`))
+    && !biz.canWrite(user)) {
+    return sendJson(res, 403, { code: 403, message: '当前账号为只读权限，不能记账' });
+  }
+  if (p.startsWith('/api/') && !biz.canAccessSet(user, setId)) {
+    return sendJson(res, 403, { code: 403, message: '当前账号无权访问该账套' });
+  }
 
   if (p === '/api/auth/change-password' && method === 'POST') return reply(res, biz.changePassword(user.id, body));
 
@@ -452,7 +486,11 @@ async function handle(req, res) {
   mm = p.match(/^\/api\/accounts\/(\d+)$/);
   if (mm) {
     if (method === 'PUT') return reply(res, biz.updateAccount(Number(mm[1]), body));
-    if (method === 'DELETE') return reply(res, biz.deleteAccount(Number(mm[1]), user.id));
+    if (method === 'DELETE') {
+      const token = String((body && body.token) || q.token || '').trim();
+      const r = biz.deleteAccount(Number(mm[1]), user.id, { token });
+      return reply(res, r, r.code === 428 ? 428 : 200);
+    }
   }
   if (p === '/api/roles' && method === 'GET') return reply(res, biz.listRoles(q.keyword));
   if (p === '/api/roles' && method === 'POST') return reply(res, biz.createRole(body));
@@ -754,4 +792,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`[zhuangdian-backend] http://${HOST}:${PORT}  db=backend/data/jinli.db  set=${DEFAULT_SET_ID}`);
+  // 启动即清理过期会话，此后每小时一次
+  try { const n = biz.pruneSessions(); if (n) console.log(`[auth] 清理过期会话 ${n} 条`); } catch { /* 首启无表时忽略 */ }
+  setInterval(() => { try { biz.pruneSessions(); } catch { /* 忽略 */ } }, 3600000).unref();
 });

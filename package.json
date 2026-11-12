@@ -1,13 +1,13 @@
 {
   "name": "jinli-finance-local",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node tools/start-all.mjs",
     "start": "node --env-file=.env server.mjs",
     "backend": "node --env-file=.env backend/index.mjs",
-    "check": "node --check server.mjs && node --check backend/index.mjs && node --check backend/biz.mjs && node --check backend/store.mjs && node --check backend/export.mjs && node --check backend/llm.mjs && node --check backend/skills.mjs && node --check backend/clarify.mjs && node --check backend/attachment.mjs && node --check backend/data-audit.mjs && node --check backend/session-title.mjs && node --check upstream/clarify.js && node --check upstream/assets/AgentWorkspace-CkfAYitb.js && node --check tools/mcp-stdio-bridge.mjs && node --check tools/local-smoke.mjs && node --check tools/desktop-verify.mjs && node --check tools/full-regression.mjs && node --check tools/data-audit.mjs && node --check tools/cleanup-test-data.mjs && node --check tools/isolated-run.mjs && node --check tools/test-session-title.mjs && node --check backend/reports.mjs && node --check tools/test-reports.mjs && node --check tools/shoot-readme.mjs && node --check tools/claw-sync.mjs && node --check tools/desktop-pull.mjs && node --check tools/change-gate.mjs",
+    "check": "node --check server.mjs && node --check backend/index.mjs && node --check backend/biz.mjs && node --check backend/store.mjs && node --check backend/export.mjs && node --check backend/llm.mjs && node --check backend/skills.mjs && node --check backend/clarify.mjs && node --check backend/attachment.mjs && node --check backend/data-audit.mjs && node --check backend/session-title.mjs && node --check upstream/clarify.js && node --check upstream/assets/AgentWorkspace-CkfAYitb.js && node --check tools/mcp-stdio-bridge.mjs && node --check tools/local-smoke.mjs && node --check tools/desktop-verify.mjs && node --check tools/full-regression.mjs && node --check tools/data-audit.mjs && node --check tools/cleanup-test-data.mjs && node --check tools/isolated-run.mjs && node --check tools/test-session-title.mjs && node --check backend/reports.mjs && node --check tools/test-reports.mjs && node --check tools/shoot-readme.mjs && node --check tools/claw-sync.mjs && node --check tools/desktop-pull.mjs && node --check tools/change-gate.mjs && node --check tools/account-cli.mjs && node --check tools/test-accounts.mjs",
     "smoke": "node tools/isolated-run.mjs --with-backend --scripts tools/local-smoke.mjs,tools/verify-dashboard.mjs",
     "regression": "node tools/full-regression.mjs",
     "test:isolated": "node tools/isolated-run.mjs",
@@ -25,6 +25,8 @@
     "shortcut": "python desktop/make_shortcut.py",
     "desktop:verify": "node tools/desktop-verify.mjs",
     "desktop:check": "node --check desktop/main.js && node --check desktop/preload.js",
-    "test:reports": "node tools/test-reports.mjs"
+    "test:reports": "node tools/test-reports.mjs",
+    "account": "node tools/account-cli.mjs",
+    "test:accounts": "node tools/test-accounts.mjs"
   }
 }

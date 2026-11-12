@@ -166,6 +166,28 @@ CREATE INDEX IF NOT EXISTS idx_entries_voucher ON voucher_entries(voucher_id);
 const _userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
 if (!_userCols.includes('phone')) db.exec("ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''");
 if (!_userCols.includes('status')) db.exec('ALTER TABLE users ADD COLUMN status INTEGER DEFAULT 1');
+/* 软删除：账号删除后保留痕迹，凭证创建人仍可追溯；用户名加后缀释放占用 */
+if (!_userCols.includes('deleted_at')) db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT DEFAULT ''");
+const _sessionCols = db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name);
+/* 会话有效期：默认 7 天，过期即失效（此前 token 永不过期） */
+if (!_sessionCols.includes('expires_at')) db.exec("ALTER TABLE sessions ADD COLUMN expires_at TEXT DEFAULT ''");
+db.exec(`
+/* 登录失败计数：按「账号+来源」累计，5 次锁 15 分钟，落库以便重启后仍然生效 */
+CREATE TABLE IF NOT EXISTS login_attempts (
+  key TEXT PRIMARY KEY,
+  fails INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT DEFAULT '',
+  updated_at TEXT NOT NULL
+);
+/* 删除账号的二次确认令牌：一次性、60 秒有效，避免误点一键删除 */
+CREATE TABLE IF NOT EXISTS delete_tokens (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  actor_id INTEGER NOT NULL,
+  expires_at TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0
+);
+`);
 db.exec(`
 CREATE TABLE IF NOT EXISTS roles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -345,8 +367,12 @@ function initialize() {
     db.prepare(`INSERT INTO users (username, password_hash, email, name, role, role_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`)
       .run('admin', hashPassword(password), '', '本地管理员', '管理员', 1, now());
-    fs.writeFileSync(path.join(LOCAL_DIR, 'local-admin.txt'), `username=admin\npassword=${password}\n`);
-    console.log(`[store] created local admin (password in .local/local-admin.txt)`);
+    // 隔离库（测试/临时实例）不要把初始密码写进共享的 .local，避免污染真实凭据
+    const adminFile = process.env.ZD_DB_PATH
+      ? path.join(path.dirname(DB_PATH), 'local-admin.txt')
+      : path.join(LOCAL_DIR, 'local-admin.txt');
+    fs.writeFileSync(adminFile, `username=admin\npassword=${password}\n`);
+    console.log(`[store] created local admin (password in ${path.relative(ROOT, adminFile)})`);
   }
 
   const cfg = db.prepare('SELECT user_id FROM agent_config WHERE user_id = 1').get();

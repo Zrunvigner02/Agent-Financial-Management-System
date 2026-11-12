@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-11T09:37:38.039Z",
+  "at": "2026-11-12T07:51:54.253Z",
   "port": 8002,
   "isolated": true,
   "summary": "117 PASS / 0 FAIL",
@@ -76,7 +76,7 @@
       "group": "B · 认证 / 账户 / 角色",
       "name": "账户列表 / 创建 / 更新 / 删除闭环",
       "pass": true,
-      "detail": "id=7 upd=0 del=0"
+      "detail": "id=9 upd=0 confirm=428 del=0"
     },
     {
       "group": "B · 认证 / 账户 / 角色",
@@ -244,7 +244,7 @@
       "group": "G · 智能体配置 / 技能 / 会话",
       "name": "已创建的会话可重命名并删除",
       "pass": true,
-      "detail": "sid=15cdb6653c285162ee4524aa put=0 del=0"
+      "detail": "sid=1ef057c37037380eef675313 put=0 del=0"
     },
     {
       "group": "G · 智能体配置 / 技能 / 会话",
@@ -268,7 +268,7 @@
       "group": "H · 意图追问工具",
       "name": "偏好开关 持久化 / 关闭 / 恢复",
       "pass": true,
-      "detail": "true → false → true"
+      "detail": "false → false → true"
     },
     {
       "group": "H · 意图追问工具",
@@ -298,7 +298,7 @@
       "group": "H2 · 会话自动命名",
       "name": "前端先建会话 → 首条消息发 session_title 且列表同步改名",
       "pass": true,
-      "detail": "sid=1fbeec18dc71297ff3f718a2 event={\"session_id\":\"1fbeec18dc71297ff3f718a2\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
+      "detail": "sid=a93b02871ea9539c6ef78312 event={\"session_id\":\"a93b02871ea9539c6ef78312\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
     },
     {
       "group": "H2 · 会话自动命名",
@@ -310,13 +310,13 @@
       "group": "H2 · 会话自动命名",
       "name": "追问选项消息不命名，真实问题才命名",
       "pass": true,
-      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1794389851558\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
+      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1794469908832\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
     },
     {
       "group": "H2 · 会话自动命名",
       "name": "auto-title 精修端点：自动生成可精修 / 人工名称不动",
       "pass": true,
-      "detail": "a={\"session_id\":\"da65055b56b9f91a8d5ca831\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"da65055b56b9f91a8d5ca831\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
+      "detail": "a={\"session_id\":\"f8cc7b9e2d75205c60e52a61\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"f8cc7b9e2d75205c60e52a61\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
     },
     {
       "group": "I · 全格式附件",
@@ -682,7 +682,7 @@
       "group": "L · SSE 契约与安全边界",
       "name": "chat 标准 SSE：event 行 + content + done 收尾",
       "pass": true,
-      "detail": "events=154 kinds=session_title,content,done"
+      "detail": "events=115 kinds=session_title,content,done"
     },
     {
       "group": "L · SSE 契约与安全边界",
@@ -709,5 +709,5 @@
       "detail": "alive"
     }
   ],
-  "child_log_tail": "(node:26316) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n\n[child exited null]"
+  "child_log_tail": "(node:25192) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n\n[child exited null]"
 }

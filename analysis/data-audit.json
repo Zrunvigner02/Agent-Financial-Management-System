@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-11T09:44:44.888Z",
+  "at": "2026-11-12T07:38:09.088Z",
   "db": "C:\\Users\\Administrator\\WorkBuddy\\工作区3\\jinli-finance\\backend\\data\\jinli.db",
   "base": "http://127.0.0.1:8000",
   "period": "2026-11",
@@ -9,11 +9,11 @@
   "compareOk": true,
   "compareDetail": "未指定 --compare",
   "result": {
-    "at": "2026-11-11T09:44:44.888Z",
+    "at": "2026-11-12T07:38:09.088Z",
     "period": "2026-11",
     "setId": 85,
-    "passed": 17,
-    "total": 17,
+    "passed": 16,
+    "total": 16,
     "error_count": 0,
     "warn_count": 0,
     "ok": true,
@@ -113,12 +113,6 @@
         "ok": true,
         "level": "pass",
         "detail": "未发现测试特征凭证"
-      },
-      {
-        "name": "干净基线：无业务凭证且看板全零",
-        "ok": true,
-        "level": "pass",
-        "detail": "凭证 0 张 / 分录 0 行 / 指标 {\"revenue\":0,\"cost\":0,\"expense\":0,\"profit\":0,\"capital\":0,\"ar\":0,\"ap\":0,\"tax\":0}"
       }
     ],
     "snapshot": {
@@ -129,12 +123,12 @@
         "vouchers": 0,
         "voucher_entries": 0,
         "closings": 0,
-        "sessions": 56,
-        "agent_sessions": 0,
-        "agent_messages": 0,
+        "sessions": 78,
+        "agent_sessions": 2,
+        "agent_messages": 57,
         "agent_attachments": 0,
-        "agent_clarify": 0,
-        "agent_clarify_prefs": 1,
+        "agent_clarify": 3,
+        "agent_clarify_prefs": 2,
         "open_tokens": 1
       },
       "metrics": {
@@ -159,11 +153,11 @@
       ],
       "subjectCount": 131
     },
-    "snapshotHash": "233d2d0363a4d583"
+    "snapshotHash": "be62e20a47bb64e6"
   },
   "history": [
-    "233d2d0363a4d583",
-    "233d2d0363a4d583",
-    "233d2d0363a4d583"
+    "be62e20a47bb64e6",
+    "be62e20a47bb64e6",
+    "be62e20a47bb64e6"
   ]
 }

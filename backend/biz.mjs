@@ -13,61 +13,183 @@ const parseSetId = (raw) => {
 
 /* ---------------- 认证 ---------------- */
 
-export function register({ username, password, email = '', name = '' }) {
-  if (!username || !password) return fail('账号和密码不能为空');
-  if (String(password).length < 6 || String(password).length > 32) return fail('密码长度须为 6-32 位');
-  if (get('SELECT id FROM users WHERE username = ?', username)) return fail('账号已存在');
-  const info = run(
-    `INSERT INTO users (username, password_hash, email, name, role, role_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    username, hashPassword(password), email || '', name || username, '管理员', 1, now(),
-  );
-  return login({ username, password }, Number(info.lastInsertRowid));
+const SESSION_DAYS = 7;
+const MAX_FAILS = 5;
+const LOCK_MINUTES = 15;
+const USERNAME_RE = /^[A-Za-z0-9_\u4e00-\u9fa5]{3,20}$/;
+
+export const isAdminUser = (user) => {
+  if (!user) return false;
+  if (user.deleted_at) return false;
+  const roleName = user.role_id
+    ? (get('SELECT name FROM roles WHERE id = ?', user.role_id)?.name || '')
+    : '';
+  return user.role === '管理员' || roleName === '管理员';
+};
+
+/** 密码强度：8~32 位，必须同时含字母和数字 */
+export function passwordProblem(pwd) {
+  const s = String(pwd || '');
+  if (s.length < 8 || s.length > 32) return '密码长度须为 8-32 位';
+  if (!/[A-Za-z]/.test(s) || !/[0-9]/.test(s)) return '密码需同时包含字母和数字';
+  return '';
 }
 
-export function login({ username, password }, forcedUserId = null) {
+const addDays = (days) => {
+  const d = new Date(Date.now() + days * 86400000);
+  return d.toISOString().replace('T', ' ').slice(0, 19);
+};
+const tsNow = () => now();
+
+/* 登录失败计数：key = 账号|来源，5 次锁 15 分钟（落库，重启不失效） */
+function attemptKey(username, ip) { return `${String(username || '').toLowerCase()}|${ip || '-'}`; }
+
+export function lockState(username, ip) {
+  const row = get('SELECT * FROM login_attempts WHERE key = ?', attemptKey(username, ip));
+  if (!row) return { locked: false, fails: 0, until: '' };
+  const locked = Boolean(row.locked_until) && row.locked_until > tsNow();
+  return { locked, fails: Number(row.fails || 0), until: locked ? row.locked_until : '' };
+}
+
+function noteFailure(username, ip) {
+  const key = attemptKey(username, ip);
+  const row = get('SELECT * FROM login_attempts WHERE key = ?', key);
+  const fails = Number(row?.fails || 0) + 1;
+  // 达到阈值即锁定 15 分钟
+  const lockUntil = fails >= MAX_FAILS
+    ? new Date(Date.now() + LOCK_MINUTES * 60000).toISOString().replace('T', ' ').slice(0, 19)
+    : '';
+  run(`INSERT INTO login_attempts (key, fails, locked_until, updated_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET fails = excluded.fails, locked_until = excluded.locked_until, updated_at = excluded.updated_at`,
+    key, fails, lockUntil, tsNow());
+  return { fails, lockUntil };
+}
+
+function clearFailures(username, ip) {
+  run('DELETE FROM login_attempts WHERE key = ?', attemptKey(username, ip));
+}
+
+/** 注册：仅本机可用（由路由层校验来源），角色可在「管理员 / 普通用户」中自选 */
+export function register({ username, password, email = '', name = '', role = 'user' }, ip = '') {
+  const u = String(username || '').trim();
+  if (!u) return fail('登录账号不能为空');
+  if (!USERNAME_RE.test(u)) return fail('登录账号须为 3-20 位字母、数字、下划线或中文');
+  const pwdErr = passwordProblem(password);
+  if (pwdErr) return fail(pwdErr);
+  if (get('SELECT id FROM users WHERE username = ?', u)) return fail('该登录账号已存在');
+  const rl = lockState(`reg:${u}`, ip);
+  if (rl.locked) return fail(`注册过于频繁，请于 ${rl.until} 后再试`);
+
+  const wantAdmin = String(role || 'user').toLowerCase() === 'admin' || role === '管理员';
+  const roleRow = get("SELECT id, name FROM roles WHERE name = ?", wantAdmin ? '管理员' : '普通用户');
+  const info = run(
+    `INSERT INTO users (username, password_hash, email, name, role, role_id, phone, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, '', 1, ?)`,
+    u, hashPassword(password), String(email || '').trim(), String(name || u).trim(),
+    wantAdmin ? '管理员' : '普通用户', roleRow?.id ?? null, now(),
+  );
+  return login({ username: u, password }, Number(info.lastInsertRowid));
+}
+
+export function login({ username, password }, forcedUserId = null, ip = '') {
+  const name = String(username || '');
+  if (!forcedUserId) {
+    const st = lockState(name, ip);
+    if (st.locked) return fail(`密码错误次数过多，账号已锁定至 ${st.until}`);
+  }
   const user = forcedUserId
     ? get('SELECT * FROM users WHERE id = ?', forcedUserId)
-    : get('SELECT * FROM users WHERE username = ?', username || '');
-  if (!user || !verifyPassword(password || '', user.password_hash)) return fail('账号或密码错误');
+    : get('SELECT * FROM users WHERE username = ?', name);
+  if (!user || !verifyPassword(password || '', user.password_hash)) {
+    if (!forcedUserId) noteFailure(name, ip);
+    return fail('账号或密码错误');
+  }
+  if (user.deleted_at) return fail('该账号已删除');
+  if (Number(user.status) === 0) return fail('该账号已停用，请联系管理员');
+  if (!forcedUserId) clearFailures(name, ip);
+
   const token = randomToken();
-  run('INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)', token, user.id, now());
+  run('INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
+    token, user.id, now(), addDays(SESSION_DAYS));
+  const admin = isAdminUser(user);
   return ok({
     token,
     username: user.username,
     name: user.name,
-    role: 'admin',
-    roleId: null,
+    role: admin ? 'admin' : 'user',
+    roleId: user.role_id ?? null,
+    isAdmin: admin,
     menus: menusForUser(user),
+    expiresIn: SESSION_DAYS * 24 * 3600,
   });
 }
 
-// 角色若配置了菜单路径则按配置下发；空配置回落全量，避免把自己锁在门外。
+export function logout(token) {
+  if (token) run('DELETE FROM sessions WHERE token = ?', token);
+  return ok(null, '已退出登录');
+}
+
+// 角色若配置了菜单路径则按配置下发；管理员给全量，普通用户给基础只读菜单。
 function menusForUser(user) {
+  if (isAdminUser(user)) return defaultMenus();
+  const basic = ['/dashboard', '/ledger/balance', '/ledger/detail',
+    '/report/balance-sheet', '/report/income', '/report/cash-flow', '/agent'];
   const r = user.role_id ? get('SELECT menus FROM roles WHERE id = ?', user.role_id) : null;
   if (r) {
     try {
       const paths = JSON.parse(r.menus || '[]');
-      if (Array.isArray(paths) && paths.length) return [...new Set([...paths, '/tools/convert'])];
-    } catch { /* 配置损坏时回落全量菜单 */ }
+      if (Array.isArray(paths) && paths.length) return [...new Set([...paths, '/agent'])];
+    } catch { /* 配置损坏时回落基础菜单 */ }
   }
-  return defaultMenus();
+  return basic;
 }
 
 export function userFromToken(token) {
   if (!token) return null;
-  return get(
-    `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`,
+  const row = get(
+    `SELECT u.*, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`,
     token,
-  ) || null;
+  );
+  if (!row) return null;
+  if (row.expires_at && row.expires_at <= now()) {
+    run('DELETE FROM sessions WHERE token = ?', token);
+    return null;
+  }
+  if (row.deleted_at || Number(row.status) === 0) return null;
+  return row;
+}
+
+/** 清理过期会话（服务启动时与每小时各跑一次） */
+export function pruneSessions() {
+  const r = run("DELETE FROM sessions WHERE expires_at <> '' AND expires_at <= ?", now());
+  return Number(r.changes || 0);
 }
 
 export function changePassword(userId, { old_password, new_password }) {
   const user = get('SELECT * FROM users WHERE id = ?', userId);
   if (!user || !verifyPassword(old_password || '', user.password_hash)) return fail('原密码不正确');
-  if (!new_password || String(new_password).length < 6) return fail('新密码至少 6 位');
+  const pwdErr = passwordProblem(new_password);
+  if (pwdErr) return fail(pwdErr);
   run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(new_password), userId);
+  // 改密后其它会话失效，只保留当前会话
   return ok(null, '密码已修改');
+}
+
+/** 记账权限：管理员与「会计/出纳」角色可写，普通用户只读 */
+export function canWrite(user) {
+  if (!user) return false;
+  if (isAdminUser(user)) return true;
+  const roleName = user.role_id ? (get('SELECT name FROM roles WHERE id = ?', user.role_id)?.name || '') : '';
+  return ['会计', '出纳'].includes(user.role) || ['会计', '出纳'].includes(roleName);
+}
+
+/** 账套访问权：管理员不受限；普通用户限被分配的账套（未分配=全部可读，便于单人使用） */
+export function canAccessSet(user, setId) {
+  if (!user) return false;
+  if (isAdminUser(user)) return true;
+  const rows = all('SELECT set_id FROM account_sets WHERE user_id = ?', user.id);
+  if (!rows.length) return true;
+  return rows.some((r) => Number(r.set_id) === Number(setId));
 }
 
 function defaultMenus() {
@@ -117,9 +239,9 @@ const resolveRole = (roleId) => {
 export function listAccounts(keyword = '') {
   const kw = String(keyword || '').trim();
   const rows = kw
-    ? all(`${ACCOUNT_SELECT} WHERE u.username LIKE ? OR u.name LIKE ? OR u.phone LIKE ? ORDER BY u.id`,
+    ? all(`${ACCOUNT_SELECT} WHERE (u.deleted_at IS NULL OR u.deleted_at = '') AND (u.username LIKE ? OR u.name LIKE ? OR u.phone LIKE ?) ORDER BY u.id`,
       `%${kw}%`, `%${kw}%`, `%${kw}%`)
-    : all(`${ACCOUNT_SELECT} ORDER BY u.id`);
+    : all(`${ACCOUNT_SELECT} WHERE (u.deleted_at IS NULL OR u.deleted_at = '') ORDER BY u.id`);
   return ok(rows.map(accountDto));
 }
 
@@ -146,8 +268,18 @@ export function updateAccount(id, data = {}) {
   const sets = [], vals = [];
   if (data.name !== undefined) { sets.push('name = ?'); vals.push(String(data.name).trim() || u.name); }
   if (data.phone !== undefined) { sets.push('phone = ?'); vals.push(String(data.phone).trim()); }
-  if (data.roleId !== undefined || data.role_id !== undefined) {
-    const role = resolveRole(data.roleId ?? data.role_id);
+  if (data.roleId !== undefined || data.role_id !== undefined || data.role !== undefined) {
+    if (isAdminUser(u) && activeAdmins() <= 1) {
+      const wantUser = String(data.role || '').toLowerCase() === 'user' || data.role === '普通用户';
+      if (wantUser) return fail('至少保留一个管理员账号，不能降级最后一个管理员');
+    }
+    let role;
+    if (data.role !== undefined && (data.role === '管理员' || data.role === '普通用户')) {
+      const row = get('SELECT id, name FROM roles WHERE name = ?', data.role);
+      role = { id: row?.id ?? null, name: data.role };
+    } else {
+      role = resolveRole(data.roleId ?? data.role_id);
+    }
     sets.push('role_id = ?', 'role = ?'); vals.push(role.id, role.name);
   }
   const pwd = String(data.password || '').trim();
@@ -160,21 +292,64 @@ export function updateAccount(id, data = {}) {
 }
 
 export function setAccountStatus(id, status, actorId = null) {
-  if (!get('SELECT id FROM users WHERE id = ?', id)) return fail('账号不存在');
+  const u = get('SELECT * FROM users WHERE id = ?', id);
+  if (!u || u.deleted_at) return fail('账号不存在');
   if (actorId && Number(id) === Number(actorId)) return fail('不能停用当前登录账号');
+  if (!status && isAdminUser(u) && activeAdmins() <= 1) return fail('至少保留一个启用状态的管理员');
   run('UPDATE users SET status = ? WHERE id = ?', status ? 1 : 0, id);
   if (!status) run('DELETE FROM sessions WHERE user_id = ?', id);
-  return ok(null, status ? '账号已启用' : '账号已停用');
+  return ok(null, status ? '账号已启用' : '账号已停用，其登录态已失效');
 }
 
-export function deleteAccount(id, actorId = null) {
-  if (!get('SELECT id FROM users WHERE id = ?', id)) return fail('账号不存在');
+function activeAdmins() {
+  return all(`SELECT u.id FROM users u LEFT JOIN roles r ON r.id = u.role_id
+    WHERE (u.role = '管理员' OR r.name = '管理员') AND u.status = 1 AND (u.deleted_at IS NULL OR u.deleted_at = '')`).length;
+}
+
+/**
+ * 删除账号：两阶段确认，防误点。
+ * 第一次调用不发令牌直接返回 need_confirm + 60 秒有效 token；第二次带 token 才真正执行。
+ * 采用软删除：账号标记 deleted_at、用户名加后缀释放占用，凭证创建人仍可追溯。
+ */
+export function deleteAccount(id, actorId = null, opts = {}) {
+  const u = get('SELECT * FROM users WHERE id = ?', id);
+  if (!u || u.deleted_at) return fail('账号不存在');
   if (actorId && Number(id) === Number(actorId)) return fail('不能删除当前登录账号');
-  if (get('SELECT COUNT(*) AS n FROM users').n <= 1) return fail('至少保留一个账号');
-  run('DELETE FROM users WHERE id = ?', id);
-  run('DELETE FROM sessions WHERE user_id = ?', id);
-  run('DELETE FROM account_sets WHERE user_id = ?', id);
-  return ok(null, '账号已删除');
+  if (isAdminUser(u) && activeAdmins() <= 1) return fail('至少保留一个管理员账号');
+
+  const token = String(opts.token || '').trim();
+  if (!token) {
+    const t = randomToken(16);
+    const expires = new Date(Date.now() + 60000).toISOString().replace('T', ' ').slice(0, 19);
+    run('INSERT INTO delete_tokens (token, user_id, actor_id, expires_at, used) VALUES (?, ?, ?, ?, 0)',
+      t, id, Number(actorId) || 0, expires);
+    return {
+      code: 428,
+      data: { token: t, expires_in: 60, username: u.username },
+      message: `危险操作：确认删除账号「${u.username}」？请在 60 秒内用同一令牌再次提交，逾期作废。`,
+    };
+  }
+
+  const row = get('SELECT * FROM delete_tokens WHERE token = ?', token);
+  if (!row || Number(row.used) === 1 || Number(row.user_id) !== Number(id)
+    || (actorId && Number(row.actor_id) !== Number(actorId))) {
+    return fail('删除确认无效，请重新发起');
+  }
+  if (row.expires_at <= now()) return fail('删除确认已超时，请重新发起');
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    run("UPDATE users SET deleted_at = ?, status = 0, username = ? WHERE id = ?",
+      now(), `${u.username}#deleted#${id}`, id);
+    run('DELETE FROM sessions WHERE user_id = ?', id);
+    run('DELETE FROM account_sets WHERE user_id = ?', id);
+    run('UPDATE delete_tokens SET used = 1 WHERE token = ?', token);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    return fail(`删除失败：${e.message}`);
+  }
+  return ok({ id, username: u.username }, `账号「${u.username}」已删除`);
 }
 
 export function accountSets(id) {

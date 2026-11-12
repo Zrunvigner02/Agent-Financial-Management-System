@@ -194,11 +194,16 @@ try {
     const updated = accountId ? await api('PUT', `/api/accounts/${accountId}`, { name: '回归测试-改' }) : { json: {} };
     const status = accountId ? await api('PUT', `/api/accounts/${accountId}/status`, { status: 0 }) : { json: {} };
     const sets = accountId ? await api('GET', `/api/accounts/${accountId}/sets`) : { json: {} };
-    const del = accountId ? await api('DELETE', `/api/accounts/${accountId}`) : { json: {} };
+    // 删除改为两阶段确认：第一次拿令牌，第二次带令牌才真正删除
+    const del1 = accountId ? await api('DELETE', `/api/accounts/${accountId}`) : { json: {} };
+    const delToken = del1.json?.data?.token || '';
+    const del = accountId && delToken
+      ? await api('DELETE', `/api/accounts/${accountId}`, { token: delToken })
+      : del1;
     const list1 = await api('GET', '/api/accounts');
     const names = JSON.stringify(list1.json?.data || []);
     return { ok: okJson(list0) && Boolean(accountId) && okJson(updated) && okJson(status) && okJson(sets) && okJson(del) && !names.includes('回归测试-改'),
-      detail: `id=${accountId} upd=${updated.json.code} del=${del.json.code}` };
+      detail: `id=${accountId} upd=${updated.json.code} confirm=${del1.json.code} del=${del.json.code}` };
   });
   await test('禁止删除当前登录账户', async () => {
     // 用刚登录拿到的 admin token 删除 admin 自己（id=1），必须被拒绝

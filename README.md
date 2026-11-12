@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.1.1-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -32,6 +32,7 @@
 | 📤 **导出中心** | 凭证 / 余额 / 明细 / 三大报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
 | 🔁 **格式转换** | 兼容 Filee CLI 协议的本地零依赖实现，产出 PDF / DOCX / ODS / RTF / 图片等 |
 | 🔌 **MCP 对接** | `POST /mcp`（streamableHttp）+ stdio 兜底桥，可被 WorkBuddy 等客户端直接调用 |
+| 👤 **账号与权限** | 本机注册、管理员 / 普通用户自选、只读与记账分权、两阶段删除确认 |
 | 🛡 **数据严谨** | 17 项独立审计、多轮核验、稳定快照哈希、隔离测试与可回滚清理 |
 | 🖥 **桌面端** | Electron 外壳，托盘常驻，静默拉起本地服务，无黑框无公网依赖 |
 
@@ -173,6 +174,47 @@ npm run dev
 
 ---
 
+## 👤 账号与权限
+
+**注册**：只允许在安装本系统的机器上注册（`127.0.0.1`），局域网与远程一律拒绝。注册时可自选角色：
+
+- **管理员**：全部权限，含账号、角色、账套、模型配置
+- **普通用户**：只读。可看账簿与三大报表、可用智能体问答，但不能记账、不能改系统设置
+
+密码要求 8-32 位且同时包含字母和数字；同一账号连续输错 5 次锁定 15 分钟（重启后仍有效）。会话有效期 7 天，过期自动失效。
+
+**账号管理**（`/auth/accounts` 页面，或命令行）：
+
+```bash
+npm run account -- list                       # 列出账号
+npm run account -- register 财务01 --password Fin2026abc --role user
+npm run account -- passwd 财务01 --password New2026abc   # 重置密码并强制下线
+npm run account -- role 财务01 admin          # 升/降级
+npm run account -- status 财务01 off          # 停用（立即踢下线）
+npm run account -- sets 财务01 85,86          # 限定可访问账套
+npm run account -- unlock 财务01              # 清除登录失败锁定
+npm run account -- delete 财务01              # 三次人工确认后软删除
+```
+
+**删除保护**：网页端删除要两次提交（第一次拿 60 秒有效令牌，第二次才执行）；命令行要连续两次输入完整用户名、再输入 `DELETE`。系统始终保留至少一个管理员，且不能删除当前登录账号。删除采用软删除：凭证创建人仍可追溯，用户名释放可复用。
+
+**迁移到新设备**：账号存在 `backend/data/jinli.db`，连同账套、凭证、会话一起搬即可：
+
+1. 新机装 Node.js 22+，拷项目（不带 `node_modules/`、`.local/`、`logs/`）
+2. 拷 `backend/data/jinli.db` 与 `.env`
+3. `npm run dev`，用原账号登录；若是全新库，初始管理员密码在 `.local/local-admin.txt`
+4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
+
+## 🆕 1.2.0 更新
+
+- **本机注册**：`/register` 页面可用，仅限本机来源；注册可自选管理员 / 普通用户，密码强度校验、频率限制
+- **权限分层**：管理类接口仅管理员；普通用户只读（账套数据 + 报表 + 智能体），记账需管理员或会计/出纳角色
+- **账号管理补全**：改资料/角色、启停、账套分配、重置密码，全部真实落库并即时踢线
+- **删除两阶段确认**：60 秒一次性令牌 + 至少保留一个管理员 + 禁止删自己，删除改软删除可追溯
+- **登录安全**：失败 5 次锁 15 分钟（落库）、会话 7 天过期并定时清理、`/api/auth/logout` 可注销
+- **命令行工具**：`npm run account -- …`，运维视角的账号操作
+- **测试**：`tools/test-accounts.mjs` 10 项；全量回归 117 项保持全绿
+
 ## 🆕 1.1.1 更新
 
 - **补齐三大报表**：资产负债表 / 利润表 / 现金流量表接入本地后端，`GET /api/reports/{balance|income|cash}?period=` 返回与前端一致的行结构，页面不再空白
@@ -233,6 +275,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 数据审计（三轮） | 17 / 17，快照哈希一致 |
 | 真实 Chrome UI 验证 | 38 / 38，零 JS 异常、零 4xx/5xx |
 | 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
+| 账号体系单测 | 10 / 10（注册、锁定、踢线、过期、删除确认、越权） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -247,6 +290,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.1.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.2.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

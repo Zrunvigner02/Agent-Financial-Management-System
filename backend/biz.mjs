@@ -2,6 +2,7 @@ import { all, get, run, db, now, readEnv, hashPassword, verifyPassword, randomTo
 import * as llm from './llm.mjs';
 import * as exp from './export.mjs';
 import * as sessionTitle from './session-title.mjs';
+import * as recurring from './recurring.mjs';
 
 export const ok = (data = null, message = '') => ({ code: 0, data, message });
 export const fail = (message = '操作失败', code = 1) => ({ code, data: null, message });
@@ -1182,6 +1183,11 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'list_subjects': return listSubjects(sid);
     case 'list_auxiliaries': return listAuxiliaries(sid);
     case 'list_invoices': return listInvoices(sid, args);
+    case 'list_recurring': return recurring.plan(sid, args.period || currentPeriodLocal());
+    case 'save_recurring': return recurring.saveTemplate(sid, args, user);
+    case 'generate_recurring': return recurring.generateForPeriod(sid, args.period || currentPeriodLocal(), user);
+    case 'adjust_recurring': return adjustRecurring(sid, args, user);
+    case 'recurring_reminder': return recurring.reminder(sid, args.period || currentPeriodLocal(), { mark: Boolean(args.mark), auto: args.auto !== false });
     case 'get_closing_status': return closingList(sid, args.period);
     case 'create_voucher': return createVoucher(sid, args, user);
     case 'create_asset': return createAsset(sid, args);
@@ -1196,3 +1202,57 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
 }
 
 export { parseSetId };
+
+/* ---------------- 固定支出工具辅助 ---------------- */
+
+const currentPeriodLocal = () => new Date().toLocaleDateString('sv-SE').slice(0, 7);
+
+/**
+ * adjust_recurring：本月直接改 / 下月提前改 / 长改模板
+ * scope = this_month（默认）| next_month | template
+ */
+export function adjustRecurring(setId, args = {}, user = 'auto') {
+  const period = args.period || currentPeriodLocal();
+  const scope = String(args.scope || 'this_month');
+  const id = args.id || args.template_id;
+  if (!id) {
+    const byName = get('SELECT id FROM recurring_templates WHERE set_id = ? AND name = ? AND active = 1', setId, String(args.name || ''));
+    if (!byName) return recurring.plan(setId, period);
+    return adjustRecurring(setId, { ...args, id: byName.id }, user);
+  }
+  if (!args.entries && !(Number(args.amount) > 0)) {
+    return { code: 1, message: '请给出新的金额或完整分录', data: null };
+  }
+  let entries = args.entries;
+  if (!entries) {
+    const tpl = recurring.listTemplates(setId).find((t) => t.id === Number(id));
+    if (!tpl) return { code: 1, message: '固定支出不存在', data: null };
+    const amount = Number(args.amount);
+    entries = tpl.entries.map((e) => ({
+      summary: e.summary,
+      subject_code: e.subject_code,
+      debit: Number(e.debit) > 0 ? amount : 0,
+      credit: Number(e.credit) > 0 ? amount : 0,
+    }));
+  }
+  if (scope === 'next_month') {
+    const next = nextPeriod(period);
+    return recurring.setOverride(setId, Number(id), next, entries, args.reason || '下月调整');
+  }
+  if (scope === 'template') {
+    const tpl = recurring.listTemplates(setId).find((t) => t.id === Number(id));
+    if (!tpl) return { code: 1, message: '固定支出不存在', data: null };
+    const r = recurring.saveTemplate(setId, {
+      id: Number(id), name: tpl.name, category: tpl.category, entries, day: tpl.day,
+      start_period: tpl.start_period, end_period: tpl.end_period, note: tpl.note,
+    }, user);
+    return r;
+  }
+  return recurring.adjustThisMonth(setId, period, Number(id), entries, user);
+}
+
+const nextPeriod = (period) => {
+  const y = Number(period.slice(0, 4));
+  const m = Number(period.slice(5, 7)) + 1;
+  return m > 12 ? `${y + 1}-01` : `${y}-${String(m).padStart(2, '0')}`;
+};

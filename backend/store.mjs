@@ -267,6 +267,52 @@ CREATE TABLE IF NOT EXISTS agent_clarify_prefs (
 );
 
 /* 智能体附件原件：多格式上传后留档，便于 WorkBuddy 侧继续读取 */
+/* 固定支出（周期性凭证）：模板 + 单月覆盖 + 生成记录 + 提醒状态 */
+CREATE TABLE IF NOT EXISTS recurring_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT '',
+  entries TEXT NOT NULL DEFAULT '[]',
+  day INTEGER NOT NULL DEFAULT 1,
+  start_period TEXT NOT NULL DEFAULT '',
+  end_period TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
+  note TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_recurring_set ON recurring_templates(set_id, active);
+
+CREATE TABLE IF NOT EXISTS recurring_overrides (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_id INTEGER NOT NULL,
+  period TEXT NOT NULL,
+  entries TEXT NOT NULL DEFAULT '[]',
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  UNIQUE(template_id, period)
+);
+
+CREATE TABLE IF NOT EXISTS recurring_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_id INTEGER NOT NULL,
+  set_id INTEGER NOT NULL,
+  period TEXT NOT NULL,
+  voucher_id INTEGER,
+  amount REAL NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'auto',
+  created_at TEXT NOT NULL,
+  UNIQUE(template_id, period)
+);
+
+CREATE TABLE IF NOT EXISTS app_state (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agent_attachments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   session_id TEXT NOT NULL DEFAULT '',

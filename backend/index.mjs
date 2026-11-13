@@ -12,6 +12,7 @@ import * as clarify from './clarify.mjs';
 import * as attachment from './attachment.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
+import * as rec from './recurring.mjs';
 
 const PORT = Number(process.env.LOCAL_BACKEND_PORT || 8000);
 const HOST = process.env.LOCAL_BACKEND_HOST || '127.0.0.1';
@@ -22,6 +23,7 @@ const TOOL_NAMES = [
   'list_invoices', 'get_closing_status', 'create_voucher', 'create_asset',
   'create_subject', 'create_auxiliary', 'upload_invoice', 'create_invoice',
   'list_invoice_templates', 'create_invoice_voucher',
+  'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
   clarify.TOOL_NAME, clarify.ANALYZE_TOOL, 'read_attachment', 'data_audit',
 ];
 
@@ -33,9 +35,57 @@ const TOOL_DESCRIPTIONS = {
   data_audit: '对账套做多轮数据核验：借贷平衡、分录一致性、科目有效性、凭证号唯一、两套独立 SQL 重算看板指标、金额精度、前端单位契约；返回逐项结论与数据快照哈希，只读不改动数据',
   create_voucher: '按摘要与分录创建记账凭证',
   list_vouchers: '查询当前账套凭证列表',
+  list_recurring: '查询固定支出（工资/房租/社保等）当月清单：金额、是否已生成凭证、是否本月已调整',
+  save_recurring: '新建或修改固定支出模板；可按类别+金额快速生成分录，也可直接给完整分录',
+  generate_recurring: '为指定月份生成缺失的固定支出凭证（草稿、幂等，一个模板一个月只生成一张）',
+  adjust_recurring: '调整固定支出：scope=this_month 直接改本月（草稿凭证随之更新）、next_month 提前改下月、template 长期改模板',
+  recurring_reminder: '每月首条消息用：返回本月固定支出一句话摘要与调整选项，mark=true 时标记为已提醒',
 };
 
 const TOOL_SCHEMAS = {
+  save_recurring: {
+    type: 'object',
+    properties: {
+      id: { type: 'number', description: '修改已有固定支出时传，新增不传' },
+      name: { type: 'string', description: '名称，如「工资」「房租」' },
+      category: { type: 'string', description: '类别：工资/社保/公积金/房租/水电/物业，可按类别自动生成分录' },
+      amount: { type: 'number', description: '按类别建时的金额' },
+      entries: { type: 'array', description: '完整分录：[{summary,subject_code,debit,credit}]，给了就不看 category/amount' },
+      day: { type: 'number', description: '每月几号入账，默认 1' },
+      start_period: { type: 'string', description: '生效起始月 YYYY-MM' },
+      end_period: { type: 'string', description: '生效结束月 YYYY-MM' },
+      note: { type: 'string' },
+    },
+    required: ['name'],
+  },
+  list_recurring: {
+    type: 'object',
+    properties: { period: { type: 'string', description: '月份 YYYY-MM，默认当月' } },
+  },
+  generate_recurring: {
+    type: 'object',
+    properties: { period: { type: 'string', description: '月份 YYYY-MM，默认当月' } },
+  },
+  adjust_recurring: {
+    type: 'object',
+    properties: {
+      id: { type: 'number', description: '固定支出 id' },
+      name: { type: 'string', description: '或用名称指定' },
+      scope: { type: 'string', description: 'this_month（默认，直接改本月）/ next_month（提前改下月）/ template（长期改）' },
+      amount: { type: 'number', description: '新金额（沿用原分录结构）' },
+      entries: { type: 'array', description: '或给完整新分录' },
+      period: { type: 'string', description: '月份 YYYY-MM，默认当月' },
+      reason: { type: 'string' },
+    },
+  },
+  recurring_reminder: {
+    type: 'object',
+    properties: {
+      period: { type: 'string', description: '月份 YYYY-MM，默认当月' },
+      mark: { type: 'boolean', description: 'true 表示标记本月已提醒' },
+      auto: { type: 'boolean', description: 'false 时只读不生成' },
+    },
+  },
   [clarify.TOOL_NAME]: {
     type: 'object',
     properties: {
@@ -105,6 +155,8 @@ function sendJson(res, status, body, extraHeaders = {}) {
 const reply = (res, result, status = 200) => sendJson(res, status, result);
 /** 运行时配置：优先进程环境变量，其次 .env（支持热改，不用重启） */
 const runtimeEnv = (name, fallback = '') => process.env[name] || readEnv(name) || fallback;
+/** 当前月份（本地时区） */
+const currentPeriod = () => new Date().toLocaleDateString('sv-SE').slice(0, 7);
 const bearer = (h) => (typeof h === 'string' && h.startsWith('Bearer ') ? h.slice(7).trim() : '');
 
 function sendDownload(res, filename, mime, buf) {
@@ -453,7 +505,7 @@ async function handle(req, res) {
   }
   // 记账写操作：管理员或 会计/出纳 角色，普通用户只读
   const WRITE_PREFIX = ['/api/vouchers', '/api/assets', '/api/invoices', '/api/subjects',
-    '/api/closing', '/api/auxiliaries', '/api/agent/actions'];
+    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring'];
   if (['POST', 'PUT', 'DELETE'].includes(method)
     && WRITE_PREFIX.some((x) => p === x || p.startsWith(`${x}/`))
     && !biz.canWrite(user)) {
@@ -526,6 +578,37 @@ async function handle(req, res) {
   // 凭证
   if (p === '/api/vouchers' && method === 'GET') return reply(res, biz.listVouchers(setId, q));
   if (p === '/api/vouchers' && method === 'POST') return reply(res, biz.createVoucher(setId, body, actor));
+
+  // ---------------- 固定支出（周期性凭证） ----------------
+  if (p === '/api/recurring' && method === 'GET') return reply(res, rec.plan(setId, q.period || currentPeriod()));
+  if (p === '/api/recurring/templates' && method === 'GET') return reply(res, { code: 0, message: '', data: rec.listTemplates(setId) });
+  if (p === '/api/recurring' && method === 'POST') return reply(res, rec.saveTemplate(setId, body, actor));
+  if (p === '/api/recurring/reminder' && method === 'GET') {
+    return reply(res, rec.reminder(setId, q.period || currentPeriod(), {
+      auto: q.auto !== '0', mark: q.mark === '1',
+    }));
+  }
+  if (p === '/api/recurring/reminder/ack' && method === 'POST') {
+    return reply(res, rec.markNotified(setId, body.period || currentPeriod()));
+  }
+  if (p === '/api/recurring/generate' && method === 'POST') {
+    return reply(res, rec.generateForPeriod(setId, body.period || currentPeriod(), actor));
+  }
+  m = p.match(/^\/api\/recurring\/(\d+)$/);
+  if (m && method === 'PUT') return reply(res, rec.saveTemplate(setId, { ...body, id: Number(m[1]) }, actor));
+  if (m && method === 'DELETE') return reply(res, rec.removeTemplate(setId, Number(m[1])));
+  m = p.match(/^\/api\/recurring\/(\d+)\/status$/);
+  if (m && method === 'POST') return reply(res, rec.setTemplateActive(setId, Number(m[1]), Boolean(body.active)));
+  m = p.match(/^\/api\/recurring\/(\d+)\/override$/);
+  if (m && method === 'POST') {
+    return reply(res, rec.setOverride(setId, Number(m[1]), body.period, body.entries, body.reason || ''));
+  }
+  if (m && method === 'DELETE') return reply(res, rec.dropOverride(Number(m[1]), q.period));
+  m = p.match(/^\/api\/recurring\/(\d+)\/adjust$/);
+  if (m && method === 'POST') {
+    return reply(res, rec.adjustThisMonth(setId, body.period || currentPeriod(), Number(m[1]), body.entries, actor));
+  }
+
   m = p.match(/^\/api\/vouchers\/(\d+)\/(audit|review|post|unpost|unaudit|reverse)$/);
   if (m && method === 'POST') {
     const id = Number(m[1]);

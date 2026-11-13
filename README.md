@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.2.2-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -28,6 +28,7 @@
 | --- | --- |
 | 📊 **账务核心** | 多账套隔离、科目表、凭证录入与校验、期初期末、余额与明细账、经营看板 |
 | 🤖 **AI 智能体** | DeepSeek 接入、账套上下文注入、工具调用、逐步反问对准需求 |
+| 🔁 **固定支出** | 工资 / 房租 / 社保 / 水电一次建模板，每月自动出草稿凭证；本月可直接改、下月可提前改 |
 | 📄 **三大报表** | 资产负债表 / 利润表 / 现金流量表，模板与公式可编辑、支持往来重分类 |
 | 📤 **导出中心** | 凭证 / 余额 / 明细 / 三大报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
 | 🔁 **格式转换** | 兼容 Filee CLI 协议的本地零依赖实现，产出 PDF / DOCX / ODS / RTF / 图片等 |
@@ -225,6 +226,15 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.3.0 更新
+
+- **固定支出（周期性凭证）**：`recurring_templates` 模板 + `recurring_runs` 生成记录 + `recurring_overrides` 单月覆盖；一月一模板只生成一张草稿，重复触发不会重复记账
+- **本月改 / 下月改 / 长期改**：`adjust_recurring` 的 `scope=this_month|next_month|template`；本月改动直接替换草稿凭证，若已审核或已记账则拒绝并提示先反记账
+- **月初提醒**：当月首次交互返回一句话摘要（项数、合计、明细、已生成张数）与四个选项，同一自然月只提醒一次（`app_state` 落库，重启不重发）
+- **接口**：`GET/POST /api/recurring`、`/templates`、`/reminder`、`/generate`、`/:id/adjust`、`/:id/override`、`/:id/status`
+- **MCP 工具**：新增 `list_recurring`、`save_recurring`、`generate_recurring`、`adjust_recurring`、`recurring_reminder`（共 28 个）
+- **测试**：`tools/test-recurring.mjs` 12 项（模板校验、幂等生成、提醒去重、本月改、已审核拒绝、下月覆盖、长期改、停用、账套隔离）
+
 ## 🆕 1.2.2 更新
 
 - README 换上桌面端实拍图（数据看板、智能体工作台），新增「手机端助理」章节与微信实测截图
@@ -307,6 +317,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 真实 Chrome UI 验证 | 38 / 38，零 JS 异常、零 4xx/5xx |
 | 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
 | 账号体系单测 | 11 / 11（注册策略、锁定、踢线、过期、删除确认、越权） |
+| 固定支出单测 | 12 / 12（幂等生成、提醒去重、本月/下月/长期调整） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -321,6 +332,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.2.2** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.3.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

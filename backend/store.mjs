@@ -452,6 +452,18 @@ function initialize() {
     console.log(`[store] created local admin (password in ${path.relative(ROOT, adminFile)})`);
   }
 
+  // 附件元数据迁移（表已建，安全补列）
+  const attCols = db.prepare('PRAGMA table_info(agent_attachments)').all().map((c) => c.name);
+  for (const [col, ddl] of [
+    ['sha256', "ALTER TABLE agent_attachments ADD COLUMN sha256 TEXT DEFAULT ''"],
+    ['orig_name', "ALTER TABLE agent_attachments ADD COLUMN orig_name TEXT DEFAULT ''"],
+    ['rel_path', "ALTER TABLE agent_attachments ADD COLUMN rel_path TEXT DEFAULT ''"],
+    ['source', "ALTER TABLE agent_attachments ADD COLUMN source TEXT DEFAULT 'chat'"],
+    ['ref_count', 'ALTER TABLE agent_attachments ADD COLUMN ref_count INTEGER DEFAULT 1'],
+  ]) {
+    if (attCols.length && !attCols.includes(col)) db.exec(ddl);
+  }
+
   const cfg = db.prepare('SELECT user_id FROM agent_config WHERE user_id = 1').get();
   if (!cfg) {
     const key = readEnv('DEEPSEEK_API_KEY');

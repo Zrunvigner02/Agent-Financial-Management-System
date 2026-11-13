@@ -11,14 +11,19 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { run, now } from './store.mjs';
+import { run, get, all, now } from './store.mjs';
 import { parseTable, unzipEntries, PARSE_EXTS } from './export.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ATTACH_DIR = path.join(ROOT, '.local', 'attachments');
+/* 新布局：data/attachments/<账套>/<YYYY-MM>/，随 data 一起备份 */
+const ATTACH_ROOT = path.join(ROOT, 'data', 'attachments');
+/* 旧布局：保留只读兼容，不再写入 */
+const LEGACY_DIR = path.join(ROOT, '.local', 'attachments');
+const ATTACH_DIR = ATTACH_ROOT;
 export const MAX_SIZE = 20 * 1024 * 1024;
 const MAX_TEXT = 12000;
 const MAX_ROWS = 200;
@@ -291,10 +296,30 @@ export function readAttachment(input = {}) {
   if (!buf.length) throw new Error('附件内容为空');
   if (buf.length > MAX_SIZE) throw new Error(`附件超过 ${MAX_SIZE / 1024 / 1024}MB 上限`);
 
-  fs.mkdirSync(ATTACH_DIR, { recursive: true });
-  const stamp = Date.now();
-  const saved = path.join(ATTACH_DIR, `${stamp}_${name}`);
-  fs.writeFileSync(saved, buf);
+  // 内容哈希去重：同一文件重复上传只留一份，引用计数 +1
+  const sha = crypto.createHash('sha256').update(buf).digest('hex');
+  const dup = get(
+    `SELECT * FROM agent_attachments WHERE sha256 = ? AND (set_id = ? OR ? = 0) ORDER BY id DESC LIMIT 1`,
+    sha, Number(input.set_id || 85), Number(input.set_id || 0),
+  );
+  let saved;
+  let relPath;
+  if (dup && dup.path && fs.existsSync(dup.path)) {
+    saved = dup.path;
+    relPath = dup.rel_path || '';
+    try { run('UPDATE agent_attachments SET ref_count = COALESCE(ref_count, 1) + 1 WHERE id = ?', dup.id); } catch { /* 兼容旧库 */ }
+  } else {
+    const setDir = String(Number(input.set_id || 85) || 85);
+    const month = new Date().toLocaleDateString('sv-SE').slice(0, 7);
+    const dir = path.join(ATTACH_ROOT, setDir, month);
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toLocaleString('sv-SE').replace(/[: ]/g, '-').slice(0, 16);
+    const base = safeName(name).replace(/\.[^.]+$/, '') || 'attachment';
+    const fname = `${stamp}_${base}_${sha.slice(0, 8)}${ext ? `.${ext}` : ''}`;
+    saved = path.join(dir, fname);
+    fs.writeFileSync(saved, buf);
+    relPath = path.relative(ROOT, saved).replace(/\\/g, '/');
+  }
 
   let r;
   try {
@@ -325,11 +350,16 @@ export function readAttachment(input = {}) {
 
   const sessionId = String(input.session_id || '');
   const setId = Number(input.set_id || 85);
-  try {
-    run(`INSERT INTO agent_attachments (session_id, set_id, name, ext, size, engine, path, rows, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    sessionId, setId, name, ext, buf.length, r.engine, saved, rowCount, now());
-  } catch { /* 留档失败不影响解析结果 */ }
+  if (!dup) {
+    try {
+      run(`INSERT INTO agent_attachments
+           (session_id, set_id, name, ext, size, engine, path, rows, created_at, sha256, orig_name, rel_path, source, ref_count)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      sessionId, setId, name, ext, buf.length, r.engine, saved, rowCount, now(),
+      sha, String(input.file_name || input.filename || input.name || name), relPath,
+      String(input.source || 'chat'));
+    } catch { /* 留档失败不影响解析结果 */ }
+  }
 
   const message = rowCount
     ? `已读取 ${name}：${r.engine}，${rowCount} 行 × ${table.columns.length} 列，可让智能体录入`
@@ -338,18 +368,62 @@ export function readAttachment(input = {}) {
     text, table, is_invoice: isInvoice, message,
     name, ext, size: buf.length, engine: r.engine, rows: rowCount,
     columns: table ? table.columns.map((c) => c.label) : [],
-    saved_path: saved, notes, supported: SUPPORTED_EXTS,
+    saved_path: saved, saved_rel: relPath, sha256: sha, dedup: Boolean(dup), id: dup ? dup.id : null, notes, supported: SUPPORTED_EXTS,
   };
 }
 
-export function listAttachments(limit = 20) {
-  // store.mjs 未导出 all()，这里直接列出留档目录（写入时同时落库 agent_attachments）
+/**
+ * 附件列表：默认按账套查库（含去重与来源），可选按月份过滤。
+ * 旧目录 .local/attachments 里的历史文件仍会并进来（标记 legacy）。
+ */
+export function listAttachments(setId = 85, { limit = 50, period = '', source = '' } = {}) {
+  const where = ['set_id = ?'];
+  const params = [Number(setId) || 85];
+  if (period) { where.push("substr(created_at, 1, 7) = ?"); params.push(period); }
+  if (source) { where.push('source = ?'); params.push(source); }
+  let rows = [];
   try {
-    return fs.readdirSync(ATTACH_DIR).slice(-limit).reverse().map((f) => {
-      const st = fs.statSync(path.join(ATTACH_DIR, f));
-      return { name: f.replace(/^\d+_/, ''), size: st.size, path: path.join(ATTACH_DIR, f), mtime: st.mtime.toISOString() };
+    rows = all(`SELECT * FROM agent_attachments WHERE ${where.join(' AND ')}
+      ORDER BY id DESC LIMIT ?`, ...params, Math.min(500, Number(limit) || 50));
+  } catch { rows = []; }
+  const items = rows.map((r) => ({
+    id: r.id, name: r.orig_name || r.name, ext: r.ext, size: r.size,
+    engine: r.engine, rows: r.rows, path: r.path, rel_path: r.rel_path || '',
+    sha256: r.sha256 || '', ref_count: r.ref_count || 1, source: r.source || 'chat',
+    session_id: r.session_id, created_at: r.created_at,
+    exists: Boolean(r.path && fs.existsSync(r.path)),
+  }));
+  if (!period && items.length < limit && fs.existsSync(LEGACY_DIR)) {
+    const legacy = fs.readdirSync(LEGACY_DIR).slice(-20).reverse().map((f) => {
+      const st = fs.statSync(path.join(LEGACY_DIR, f));
+      return { name: f.replace(/^\d+_/, ''), size: st.size, path: path.join(LEGACY_DIR, f),
+        created_at: st.mtime.toISOString().slice(0, 19).replace('T', ' '), legacy: true };
     });
-  } catch { return []; }
+    return { items: [...items, ...legacy], count: items.length + legacy.length };
+  }
+  return { items, count: items.length };
+}
+
+/** 清理：删除超过 N 天且引用计数为 1 的附件（先预览后执行） */
+export function pruneAttachments({ days = 180, dryRun = true, setId = 0 } = {}) {
+  const cutoff = new Date(Date.now() - Number(days) * 86400000).toLocaleString('sv-SE').slice(0, 19);
+  const where = ["created_at < ?", 'COALESCE(ref_count, 1) <= 1'];
+  const params = [cutoff];
+  if (setId) { where.push('set_id = ?'); params.push(Number(setId)); }
+  let rows = [];
+  try { rows = all(`SELECT * FROM agent_attachments WHERE ${where.join(' AND ')}`, ...params); } catch { rows = []; }
+  let bytes = 0;
+  const removed = [];
+  for (const r of rows) {
+    const size = Number(r.size || 0);
+    bytes += size;
+    removed.push({ id: r.id, name: r.orig_name || r.name, size, created_at: r.created_at, path: r.path });
+    if (!dryRun) {
+      try { if (r.path && fs.existsSync(r.path)) fs.unlinkSync(r.path); } catch { /* 文件已不在 */ }
+      try { run('DELETE FROM agent_attachments WHERE id = ?', r.id); } catch { /* 忽略 */ }
+    }
+  }
+  return { dry_run: Boolean(dryRun), days: Number(days), count: removed.length, bytes, files: removed };
 }
 
 /** MCP tools/call 入口 */

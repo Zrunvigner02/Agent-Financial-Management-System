@@ -851,7 +851,7 @@ async function handle(req, res) {
   // 全格式附件读取：兼容前端 {image,file_name,mime}、REST {content,name}、MCP {path}
   if (p === '/api/agent/upload' && method === 'POST') {
     try {
-      const r = attachment.readAttachment({ ...body, session_id: body.session_id || '', set_id: setId });
+      const r = attachment.readAttachment({ ...body, session_id: body.session_id || '', set_id: setId, source: body.source || 'chat' });
       return reply(res, { code: 0, data: r, message: r.message });
     } catch (e) { return reply(res, biz.fail(e.message)); }
   }
@@ -859,7 +859,15 @@ async function handle(req, res) {
     return reply(res, biz.ok({ extensions: attachment.SUPPORTED_EXTS, max_mb: attachment.MAX_SIZE / 1024 / 1024 }));
   }
   if (p === '/api/agent/attachments' && method === 'GET') {
-    return reply(res, biz.ok({ list: attachment.listAttachments(Number(q.limit) || 20) }));
+    const r = attachment.listAttachments(setId, { limit: Number(q.limit) || 50, period: q.period || '', source: q.source || '' });
+    return reply(res, biz.ok({ list: r.items, count: r.count, set_id: setId, period: q.period || '' }));
+  }
+  // 附件清理：先预览（dry-run），确认后带 apply=1 才真删
+  if (p === '/api/agent/attachments/prune' && method === 'POST') {
+    const r = attachment.pruneAttachments({
+      days: Number(body.days) || 180, dryRun: body.apply !== true, setId: body.set_id || setId,
+    });
+    return reply(res, biz.ok(r, r.dry_run ? `将清理 ${r.count} 个附件（${(r.bytes / 1024 / 1024).toFixed(2)} MB），确认后带 apply=1 执行` : `已清理 ${r.count} 个附件`));
   }
   if (p === '/api/agent/attachments/read' && method === 'POST') {
     try { return reply(res, biz.ok(attachment.readAttachment({ ...body, set_id: setId }))); }

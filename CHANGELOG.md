@@ -1,5 +1,15 @@
 # 更新日志
 
+## [1.4.1] — 2026-11-13
+
+### 新增
+
+- **附件留档**：`data/attachments/<账套>/<YYYY-MM>/<时间_名称_短哈希>.<ext>`，随 data 目录备份；旧目录 `.local/attachments` 只读兼容。
+- **内容去重**：sha256 判重，重复上传复用同一文件并累加 `ref_count`，不再产生多份。
+- **元数据**：`agent_attachments` 补 `sha256 / orig_name / rel_path / source / ref_count`。
+- **查询与清理**：`GET /api/agent/attachments`、`POST /api/agent/attachments/prune`、`npm run attachments:prune`（默认预演，`--apply` 才删）。
+- **测试**：`tools/test-attachments.mjs` 6 项。
+
 ## [1.4.0] — 2026-11-13
 
 ### 新增

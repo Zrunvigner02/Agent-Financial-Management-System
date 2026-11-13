@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.4.0-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.1-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -227,6 +227,14 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.4.1 更新
+
+- **附件真正留档**：上传文件保存到 `data/attachments/<账套>/<年月>/`，随 `data` 一起备份，不再放临时目录
+- **内容去重**：按 sha256 判重，同一文件重复上传只存一份，引用计数累加；被多份引用的清理时始终保留
+- **元数据完整**：落库含原文件名、相对路径、哈希、来源（前端/手机/MCP）、解析引擎与行数
+- **查询与清理**：`GET /api/agent/attachments?period=&limit=` 按月列出；`POST /api/agent/attachments/prune` 与 `npm run attachments:prune` 先预演后删除
+- **测试**：`tools/test-attachments.mjs` 6 项（落盘位置、去重、元数据、列表、月份过滤、清理）
+
 ## 🆕 1.4.0 更新
 
 - **前端对话真正能改数据**：`/api/agent/chat` 接入 function calling，28 个工具边聊边用；界面显示「正在查/正在改」与结果，不再只有手机端能改
@@ -328,6 +336,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
 | 账号体系单测 | 11 / 11（注册策略、锁定、踢线、过期、删除确认、越权） |
 | 固定支出与标注单测 | 17 / 17（幂等生成、提醒去重、本月/下月/长期调整、离职、标注撤销） |
+| 附件留档单测 | 6 / 6（存储路径、内容去重、元数据、列表、清理） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -342,6 +351,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.4.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.4.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

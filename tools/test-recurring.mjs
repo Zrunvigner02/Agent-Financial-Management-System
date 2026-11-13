@@ -16,6 +16,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'zd-recurring-'));
 process.env.ZD_DB_PATH = path.join(tmp, 'test.db');
 
 const rec = await import('../backend/recurring.mjs');
+const tags = await import('../backend/tags.mjs');
 const store = await import('../backend/store.mjs');
 
 const SET = 85;
@@ -163,6 +164,59 @@ check('提醒在无模板时也给出引导话术', () => {
   const r = rec.reminder(86, '2026-11', { auto: false });
   assert.equal(r.code, 0);
   assert.match(r.data.text, /还没有设置固定支出/);
+});
+
+check('人员维度：工资按人建模板并在列表体现', () => {
+  const r = rec.saveTemplate(SET, { name: '工资-张三', person: '张三', category: '工资', amount: 9000, day: 10 }, 'tester');
+  assert.equal(r.code, 0, r.message);
+  const t = rec.listTemplates(SET).find((x) => x.name === '工资-张三');
+  assert.equal(t.person, '张三');
+  assert.equal(t.amount, 9000);
+});
+
+check('离职标注：当月起不再生成，历史保留，列表带离职月份', () => {
+  const tpl = rec.listTemplates(SET).find((x) => x.name === '工资-张三');
+  const before = rec.generateForPeriod(SET, '2026-10', 'tester');
+  assert.ok(before.data.created.some((x) => x.id === tpl.id), '离职前应能生成');
+
+  const tag = tags.addTag(SET, { entity_type: 'recurring', entity_id: tpl.id, tag: '离职', effective_from: '2026-11' }, 'tester');
+  assert.equal(tag.code, 0, tag.message);
+
+  const nov = rec.generateForPeriod(SET, '2026-11', 'tester');
+  assert.equal(nov.data.created.some((x) => x.id === tpl.id), false, '离职当月不应再生成');
+
+  const listed = rec.listTemplates(SET).find((x) => x.id === tpl.id);
+  assert.equal(listed.resigned_from, '2026-11');
+
+  const oct = store.get("SELECT COUNT(*) AS n FROM recurring_runs WHERE template_id = ? AND period = '2026-10'", tpl.id);
+  assert.equal(oct.n, 1, '历史月份记录应保留');
+});
+
+check('标注去重与撤销（撤销留痕不删除）', () => {
+  const tpl = rec.listTemplates(SET).find((x) => x.name === '工资-张三');
+  const dup = tags.addTag(SET, { entity_type: 'recurring', entity_id: tpl.id, tag: '离职', effective_from: '2026-11' }, 'tester');
+  assert.equal(dup.code, 0);
+  assert.equal(dup.data.duplicate, true);
+
+  const list = tags.listTags(SET, { entity_type: 'recurring', entity_id: tpl.id });
+  assert.equal(list.length, 1);
+  assert.equal(tags.voidTag(SET, list[0].id).code, 0);
+  assert.equal(tags.listTags(SET, { entity_type: 'recurring', entity_id: tpl.id }).length, 0);
+  assert.equal(tags.listTags(SET, { entity_type: 'recurring', entity_id: tpl.id, includeVoided: true }).length, 1);
+});
+
+check('发票钱货两讫标注可查询', () => {
+  const r = tags.addTag(SET, { entity_type: 'invoice', entity_id: 1, tag: '钱货两讫', note: '已收款' }, 'tester');
+  assert.equal(r.code, 0, r.message);
+  const list = tags.listTags(SET, { entity_type: 'invoice', entity_id: 1 });
+  assert.equal(list[0].tag, '钱货两讫');
+});
+
+check('非法标注输入被拒', () => {
+  assert.equal(tags.addTag(SET, { entity_type: 'bad', entity_id: 1, tag: '离职' }).code, 1);
+  assert.equal(tags.addTag(SET, { entity_type: 'recurring', entity_id: 0, tag: '离职' }).code, 1);
+  assert.equal(tags.addTag(SET, { entity_type: 'recurring', entity_id: 1, tag: '' }).code, 1);
+  assert.equal(tags.addTag(SET, { entity_type: 'recurring', entity_id: 1, tag: '离职', effective_from: '2026-13' }).code, 1);
 });
 
 console.log(`\n固定支出测试：${pass} PASS`);

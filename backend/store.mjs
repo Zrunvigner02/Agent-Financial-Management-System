@@ -168,6 +168,8 @@ if (!_userCols.includes('phone')) db.exec("ALTER TABLE users ADD COLUMN phone TE
 if (!_userCols.includes('status')) db.exec('ALTER TABLE users ADD COLUMN status INTEGER DEFAULT 1');
 /* 软删除：账号删除后保留痕迹，凭证创建人仍可追溯；用户名加后缀释放占用 */
 if (!_userCols.includes('deleted_at')) db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT DEFAULT ''");
+const _recCols = db.prepare('PRAGMA table_info(recurring_templates)').all().map((c) => c.name);
+if (_recCols.length && !_recCols.includes('person')) db.exec("ALTER TABLE recurring_templates ADD COLUMN person TEXT DEFAULT ''");
 const _sessionCols = db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name);
 /* 会话有效期：默认 7 天，过期即失效（此前 token 永不过期） */
 if (!_sessionCols.includes('expires_at')) db.exec("ALTER TABLE sessions ADD COLUMN expires_at TEXT DEFAULT ''");
@@ -273,6 +275,7 @@ CREATE TABLE IF NOT EXISTS recurring_templates (
   set_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   category TEXT NOT NULL DEFAULT '',
+  person TEXT NOT NULL DEFAULT '',
   entries TEXT NOT NULL DEFAULT '[]',
   day INTEGER NOT NULL DEFAULT 1,
   start_period TEXT NOT NULL DEFAULT '',
@@ -306,6 +309,34 @@ CREATE TABLE IF NOT EXISTS recurring_runs (
   created_at TEXT NOT NULL,
   UNIQUE(template_id, period)
 );
+
+/* 通用标注：离职 / 调岗 / 钱货两讫 / 已结清 / 作废；只新增不物理删除（voided 作废留痕） */
+CREATE TABLE IF NOT EXISTS entity_tags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id INTEGER NOT NULL,
+  tag TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  effective_from TEXT NOT NULL DEFAULT '',
+  voided INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_entity_tags ON entity_tags(set_id, entity_type, entity_id);
+
+/* 对话里的待确认写操作（两阶段）：模型只能发起，用户回「确认」才落库 */
+CREATE TABLE IF NOT EXISTS pending_actions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  set_id INTEGER NOT NULL,
+  tool TEXT NOT NULL,
+  args TEXT NOT NULL DEFAULT '{}',
+  summary TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pending_session ON pending_actions(session_id, status);
 
 CREATE TABLE IF NOT EXISTS app_state (
   k TEXT PRIMARY KEY,

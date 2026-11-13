@@ -8,6 +8,7 @@
  * 只写 vouchers / voucher_entries 的草稿，不做审核、不做记账；不碰历史凭证。
  */
 import { db, get, all, run, now } from './store.mjs';
+import * as tags from './tags.mjs';
 
 const PERIOD_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const ok = (data, message = '') => ({ code: 0, message, data });
@@ -72,10 +73,14 @@ export function listTemplates(setId, { activeOnly = false } = {}) {
   const rows = activeOnly
     ? all('SELECT * FROM recurring_templates WHERE set_id = ? AND active = 1 ORDER BY id', setId)
     : all('SELECT * FROM recurring_templates WHERE set_id = ? ORDER BY active DESC, id', setId);
+  const tagMap = tags.tagMap(setId, 'recurring');
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
+    person: r.person || '',
     category: r.category || '',
+    tags: tagMap.get(r.id) || {},
+    resigned_from: (tagMap.get(r.id) || {})['离职'] || '',
     entries: parseEntries(r.entries),
     amount: amountOf(parseEntries(r.entries)),
     day: Number(r.day || 1),
@@ -111,17 +116,18 @@ export function saveTemplate(setId, data = {}, user = '') {
   if (data.id) {
     const row = get('SELECT * FROM recurring_templates WHERE id = ? AND set_id = ?', Number(data.id), setId);
     if (!row) return fail('固定支出不存在');
-    run(`UPDATE recurring_templates SET name=?, category=?, entries=?, day=?, start_period=?, end_period=?, note=?, updated_at=?
+    run(`UPDATE recurring_templates SET name=?, category=?, person=?, entries=?, day=?, start_period=?, end_period=?, note=?, updated_at=?
          WHERE id=? AND set_id=?`,
-      name, String(data.category || row.category || ''), JSON.stringify(norm.entries), day,
+      name, String(data.category || row.category || ''), String(data.person ?? row.person ?? ''),
+      JSON.stringify(norm.entries), day,
       start || row.start_period || '', end, String(data.note || row.note || ''), now(), Number(data.id), setId);
     return ok({ id: Number(data.id), amount: norm.amount }, `已更新「${name}」`);
   }
 
   const info = run(`INSERT INTO recurring_templates
-    (set_id, name, category, entries, day, start_period, end_period, active, note, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
-    setId, name, String(data.category || ''), JSON.stringify(norm.entries), day,
+    (set_id, name, category, person, entries, day, start_period, end_period, active, note, created_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+    setId, name, String(data.category || ''), String(data.person || ''), JSON.stringify(norm.entries), day,
     start, end, String(data.note || ''), String(user || ''), now(), now());
   return ok({ id: Number(info.lastInsertRowid), amount: norm.amount }, `已建立固定支出「${name}」，每月 ${amountOf(norm.entries)} 元`);
 }
@@ -201,6 +207,8 @@ function deleteDraft(setId, voucherId) {
 
 function inRange(tpl, period) {
   if (!tpl.active) return false;
+  // 离职：自离职月份起不再生成（历史月份仍可在凭证里查到）
+  if (tpl.resigned_from && period >= tpl.resigned_from) return false;
   if (tpl.start_period && period < tpl.start_period) return false;
   if (tpl.end_period && period > tpl.end_period) return false;
   return true;
@@ -271,7 +279,8 @@ export function plan(setId, period) {
     const ran = get('SELECT * FROM recurring_runs WHERE template_id = ? AND period = ?', t.id, period);
     const voucher = ran?.voucher_id ? get('SELECT id, status, no FROM vouchers WHERE id = ?', ran.voucher_id) : null;
     return {
-      id: t.id, name: t.name, category: t.category,
+      id: t.id, name: t.name, person: t.person, category: t.category,
+      tags: t.tags, resigned_from: t.resigned_from,
       amount: amountOf(entries), base_amount: t.amount,
       overridden: Boolean(ov),
       generated: Boolean(ran),

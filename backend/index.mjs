@@ -13,6 +13,7 @@ import * as attachment from './attachment.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
+import * as tags from './tags.mjs';
 
 const PORT = Number(process.env.LOCAL_BACKEND_PORT || 8000);
 const HOST = process.env.LOCAL_BACKEND_HOST || '127.0.0.1';
@@ -24,6 +25,7 @@ const TOOL_NAMES = [
   'create_subject', 'create_auxiliary', 'upload_invoice', 'create_invoice',
   'list_invoice_templates', 'create_invoice_voucher',
   'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
+  'list_tags', 'save_tag',
   clarify.TOOL_NAME, clarify.ANALYZE_TOOL, 'read_attachment', 'data_audit',
 ];
 
@@ -40,14 +42,35 @@ const TOOL_DESCRIPTIONS = {
   generate_recurring: '为指定月份生成缺失的固定支出凭证（草稿、幂等，一个模板一个月只生成一张）',
   adjust_recurring: '调整固定支出：scope=this_month 直接改本月（草稿凭证随之更新）、next_month 提前改下月、template 长期改模板',
   recurring_reminder: '每月首条消息用：返回本月固定支出一句话摘要与调整选项，mark=true 时标记为已提醒',
+  list_tags: '查询标注（离职 / 钱货两讫 / 已结清 / 作废 等），可按对象类型与编号过滤',
+  save_tag: '给业务对象加标注：entity_type=recurring|invoice|voucher|asset，tag=离职/钱货两讫/已结清/作废，可带生效月份；只新增不删除',
 };
 
 const TOOL_SCHEMAS = {
+  list_tags: {
+    type: 'object',
+    properties: {
+      entity_type: { type: 'string', description: 'recurring / invoice / voucher / asset' },
+      entity_id: { type: 'number' },
+    },
+  },
+  save_tag: {
+    type: 'object',
+    properties: {
+      entity_type: { type: 'string', description: 'recurring / invoice / voucher / asset' },
+      entity_id: { type: 'number' },
+      tag: { type: 'string', description: '离职 / 调岗 / 钱货两讫 / 已结清 / 作废 / 暂停' },
+      effective_from: { type: 'string', description: '生效月份 YYYY-MM（离职用离职当月）' },
+      note: { type: 'string' },
+    },
+    required: ['entity_type', 'entity_id', 'tag'],
+  },
   save_recurring: {
     type: 'object',
     properties: {
       id: { type: 'number', description: '修改已有固定支出时传，新增不传' },
       name: { type: 'string', description: '名称，如「工资」「房租」' },
+      person: { type: 'string', description: '员工姓名（工资类支出按人建模板时必填）' },
       category: { type: 'string', description: '类别：工资/社保/公积金/房租/水电/物业，可按类别自动生成分录' },
       amount: { type: 'number', description: '按类别建时的金额' },
       entries: { type: 'array', description: '完整分录：[{summary,subject_code,debit,credit}]，给了就不看 category/amount' },
@@ -307,24 +330,100 @@ async function runSkillSse(res, skillId, body, setId) {
   }
 }
 
+/* ---------------- 对话里的工具调用（function calling） ---------------- */
+
+const READ_ONLY_TOOLS = new Set([
+  'list_sets', 'list_vouchers', 'get_voucher', 'get_ledger', 'get_report',
+  'list_assets', 'list_asset_categories', 'list_subjects', 'list_auxiliaries',
+  'list_invoices', 'get_closing_status', 'list_invoice_templates',
+  'list_recurring', 'recurring_reminder', 'read_attachment', 'data_audit', 'list_tags',
+]);
+
+const toolDefs = () => TOOL_NAMES
+  .filter((n) => n !== clarify.TOOL_NAME && n !== clarify.ANALYZE_TOOL)
+  .map((n) => ({
+    type: 'function',
+    function: {
+      name: n,
+      description: TOOL_DESCRIPTIONS[n] || n,
+      parameters: TOOL_SCHEMAS[n] || { type: 'object', properties: {}, additionalProperties: true },
+    },
+  }));
+
+const pendingOf = (sessionId) => get(
+  "SELECT * FROM pending_actions WHERE session_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1", sessionId);
+const clearPending = (id, status = 'done') => run('UPDATE pending_actions SET status = ? WHERE id = ?', status, id);
+
+const CONFIRM_RE = /^(确认|确定|执行|可以|好|同意|1|y|yes|ok|行)$/i;
+const CANCEL_RE = /^(取消|算了|不用|不了|放弃|2|n|no)$/i;
+
+function summarizeAction(tool, args) {
+  const a = args || {};
+  const parts = [];
+  if (a.name) parts.push(`名称「${a.name}」`);
+  if (a.person) parts.push(`人员「${a.person}」`);
+  if (a.amount) parts.push(`金额 ${Number(a.amount).toLocaleString('zh-CN')} 元`);
+  if (a.period) parts.push(`期间 ${a.period}`);
+  if (a.scope) parts.push(`范围 ${a.scope}`);
+  if (a.category) parts.push(`类别 ${a.category}`);
+  if (Array.isArray(a.entries)) parts.push(`分录 ${a.entries.length} 行`);
+  if (a.id) parts.push(`编号 ${a.id}`);
+  if (a.tag) parts.push(`标注「${a.tag}」`);
+  if (a.summary) parts.push(`摘要「${String(a.summary).slice(0, 30)}」`);
+  return `${tool}${parts.length ? '：' + parts.join('，') : ''}`;
+}
+
+/** 执行一次工具；写操作只落草稿，返回结构化结果 */
+function runToolSafe(setId, name, args, user) {
+  try {
+    const r = biz.callTool(name, args, setId, user);
+    return r || { code: 1, message: '工具无返回', data: null };
+  } catch (e) {
+    return { code: 1, message: `工具执行异常：${e.message}`, data: null };
+  }
+}
+
 async function agentChat(res, body, setId) {
   sseHead(res);
   const message = body.message || '';
   const sessionId = body.session_id || randomUUID();
 
-  // 会话自动命名：首条有效用户消息立即生成短标题，并通过 SSE 让前端同步刷新侧栏/顶栏。
-  // 放在 clarify / LLM 之前，即使模型未配置或走追问分支，会话名也一定生成。
   const titled = sessionTitle.trackFirstMessage(setId, sessionId, message);
   biz.saveAgentMessage(sessionId, 'user', message);
   if (titled) sse(res, 'session_title', titled);
 
-  // 意图追问工具：不依赖 LLM，模型未配置时也能完成多轮反问与精确产出。
-  // 结构化选项走独立 clarify 事件，前端注入层 tee 响应流后渲染可点击卡片。
+  // ---------- 先处理「上一轮待确认的写操作」 ----------
+  const pending = pendingOf(sessionId);
+  if (pending) {
+    if (CONFIRM_RE.test(message.trim())) {
+      const args = JSON.parse(pending.args || '{}');
+      const r = runToolSafe(setId, pending.tool, args, body.__actor || 'agent');
+      clearPending(pending.id, r.code === 0 ? 'done' : 'failed');
+      const text = r.code === 0
+        ? `已执行：${pending.summary}\n${r.message || ''}${r.data?.voucher_id ? `（凭证 #${r.data.voucher_id}，草稿）` : ''}`
+        : `执行失败：${r.message}`;
+      for (const chunk of textChunks(text)) sse(res, 'content', { text: chunk });
+      sse(res, 'tool', { status: 'done', name: pending.tool, ok: r.code === 0 });
+      biz.saveAgentMessage(sessionId, 'assistant', text);
+      sse(res, 'done', {});
+      return res.end();
+    }
+    if (CANCEL_RE.test(message.trim())) {
+      clearPending(pending.id, 'cancelled');
+      const text = '好的，已取消，没有改动任何数据。';
+      for (const chunk of textChunks(text)) sse(res, 'content', { text: chunk });
+      biz.saveAgentMessage(sessionId, 'assistant', text);
+      sse(res, 'done', {});
+      return res.end();
+    }
+    // 其它回复：作废上一次待确认，继续正常对话
+    clearPending(pending.id, 'expired');
+  }
+
+  // ---------- 意图追问（不依赖模型） ----------
   try {
     const r = await clarify.handle({
       sessionId, message, setId,
-      // 只有新版注入层（能渲染可点击选项）才在聊天窗口反问，避免旧缓存页面
-      // 只显示文字卡片却没有按钮，把用户卡在「没看懂这个回答」的循环里。
       capable: body.clarify === 1 || body.clarify === true,
       force: Boolean(body.clarify_force),
     });
@@ -341,8 +440,6 @@ async function agentChat(res, body, setId) {
     return res.end();
   }
 
-  // 每次请求都重新读 agent_config：改模型/key 无需重启即可生效。
-  // llm.currentConfig 负责把 dsv4.1f1017 之类的别名解析成上游真正接受的 model id。
   const { key, baseUrl, model } = llm.currentConfig(get('SELECT * FROM agent_config WHERE user_id = 1'));
   if (!key) {
     sse(res, 'error', { message: '未配置 DEEPSEEK_API_KEY，请在 .env 中设置' });
@@ -350,8 +447,6 @@ async function agentChat(res, body, setId) {
     return res.end();
   }
 
-  // 前端没有请求级超时：模型慢或连接挂起时会永久停在「思考中…」。
-  // 这里补 12s 慢提示 / 45s 无首字中止 / 120s 总时长硬上限，并统一走 error+done。
   const controller = new AbortController();
   let gotFirstToken = false;
   let answer = '';
@@ -367,47 +462,96 @@ async function agentChat(res, body, setId) {
   const clearTimers = () => { clearTimeout(slowTimer); clearTimeout(firstTimer); clearTimeout(totalTimer); };
   res.on('close', clearTimers);
 
+  const history = biz.agentMessages(sessionId).data.slice(-10).map((m) => ({ role: m.role, content: m.content }));
+  const messages = [
+    { role: 'system', content: `${biz.agentSystemPrompt(setId)}\n\n【工具使用铁律】\n1. 只有工具返回 code=0 才能说「已修改/已完成」，禁止凭空声称改了数据。\n2. 写操作（新增/修改/删除）会先返回「待确认」，由用户回复确认后才真正执行；不要自己说已经改完。\n3. 改动前先复述对象、期间、金额、影响凭证数，让用户确认。\n4. 生成的凭证一律是草稿，不能替用户审核或记账。` },
+    ...history,
+  ];
+
   try {
-    const history = biz.agentMessages(sessionId).data.slice(-10).map((m) => ({ role: m.role, content: m.content }));
-    const upstream = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model,
-        stream: true,
-        messages: [
-          { role: 'system', content: biz.agentSystemPrompt(setId) },
-          ...history,
-        ],
-      }),
-      signal: controller.signal,
-    });
-    if (!upstream.ok || !upstream.body) {
-      // 透出上游的 invalid model / 余额不足 / 限流等原因，避免静默失败
-      const detail = upstream.ok ? '' : await llm.readUpstreamError(upstream);
-      throw new Error(`模型请求失败（HTTP ${upstream.status}${model ? ` / ${model}` : ''}）${detail ? `：${detail}` : ''}`);
-    }
-    const reader = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === '[DONE]') continue;
-        try {
-          const delta = JSON.parse(payload).choices?.[0]?.delta?.content;
-          if (delta) {
+    let rounds = 0;
+    let pendingCreated = false;
+
+    while (rounds < 4 && !pendingCreated) {
+      rounds += 1;
+      const upstream = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model, stream: true, messages, tools: toolDefs(), tool_choice: 'auto' }),
+        signal: controller.signal,
+      });
+      if (!upstream.ok || !upstream.body) {
+        const detail = upstream.ok ? '' : await llm.readUpstreamError(upstream);
+        throw new Error(`模型请求失败（HTTP ${upstream.status}${model ? ` / ${model}` : ''}）${detail ? `：${detail}` : ''}`);
+      }
+
+      const reader = upstream.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let turnText = '';
+      const calls = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          let obj;
+          try { obj = JSON.parse(payload); } catch { continue; }
+          const delta = obj.choices?.[0]?.delta || {};
+          if (delta.content) {
             if (!gotFirstToken) { gotFirstToken = true; clearTimeout(slowTimer); clearTimeout(firstTimer); }
-            answer += delta;
-            sse(res, 'content', { text: delta });
+            turnText += delta.content;
+            answer += delta.content;
+            sse(res, 'content', { text: delta.content });
           }
-        } catch { /* 忽略无法解析的增量 */ }
+          if (Array.isArray(delta.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              calls[idx] = calls[idx] || { id: '', name: '', args: '' };
+              if (tc.id) calls[idx].id = tc.id;
+              if (tc.function?.name) calls[idx].name += tc.function.name;
+              if (tc.function?.arguments) calls[idx].args += tc.function.arguments;
+            }
+          }
+        }
+      }
+
+      const real = calls.filter(Boolean);
+      if (!real.length) break; // 没有工具调用 → 收尾
+
+      messages.push({ role: 'assistant', content: turnText || null, tool_calls: real.map((c, i) => ({ id: c.id || `call_${rounds}_${i}`, type: 'function', function: { name: c.name, arguments: c.args || '{}' } })) });
+
+      for (const [i, c] of real.entries()) {
+        const callId = c.id || `call_${rounds}_${i}`;
+        let args = {};
+        try { args = JSON.parse(c.args || '{}'); } catch { args = {}; }
+
+        if (!READ_ONLY_TOOLS.has(c.name)) {
+          const summary = summarizeAction(c.name, args);
+          run(`INSERT INTO pending_actions (session_id, set_id, tool, args, summary, status, created_at)
+               VALUES (?, ?, ?, ?, ?, 'pending', ?)`, sessionId, setId, c.name, JSON.stringify(args), summary, now());
+          pendingCreated = true;
+          sse(res, 'tool', { status: 'confirm', name: c.name, label: summary });
+          const text = `\n\n准备执行：${summary}\n确认后我就落库（只生成草稿，不会自动审核或记账）。回复「确认」执行，回复「取消」放弃。`;
+          answer += text;
+          for (const chunk of textChunks(text)) sse(res, 'content', { text: chunk });
+          break;
+        }
+
+        sse(res, 'tool', { status: 'running', name: c.name, label: TOOL_DESCRIPTIONS[c.name] || c.name });
+        const result = runToolSafe(setId, c.name, args, body.__actor || 'agent');
+        messages.push({
+          role: 'tool',
+          tool_call_id: callId,
+          content: JSON.stringify(result).slice(0, 6000),
+        });
+        sse(res, 'tool', { status: 'done', name: c.name, ok: result.code === 0 });
       }
     }
     if (!gotFirstToken && !answer) throw new Error('模型未返回任何内容');
@@ -505,7 +649,7 @@ async function handle(req, res) {
   }
   // 记账写操作：管理员或 会计/出纳 角色，普通用户只读
   const WRITE_PREFIX = ['/api/vouchers', '/api/assets', '/api/invoices', '/api/subjects',
-    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring'];
+    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring', '/api/tags'];
   if (['POST', 'PUT', 'DELETE'].includes(method)
     && WRITE_PREFIX.some((x) => p === x || p.startsWith(`${x}/`))
     && !biz.canWrite(user)) {
@@ -580,6 +724,20 @@ async function handle(req, res) {
   if (p === '/api/vouchers' && method === 'POST') return reply(res, biz.createVoucher(setId, body, actor));
 
   // ---------------- 固定支出（周期性凭证） ----------------
+  // ---------------- 标注（离职 / 钱货两讫 / 已结清 等） ----------------
+  if (p === '/api/tags' && method === 'GET') {
+    return reply(res, { code: 0, message: '', data: tags.listTags(setId, { entity_type: q.entity_type || q.type, entity_id: q.entity_id }) });
+  }
+  if (p === '/api/tags' && method === 'POST') return reply(res, tags.addTag(setId, body, actor));
+  m = p.match(/^\/api\/tags\/(\d+)$/);
+  if (m && method === 'DELETE') return reply(res, tags.voidTag(setId, Number(m[1])));
+  m = p.match(/^\/api\/recurring\/(\d+)\/resign$/);
+  if (m && method === 'POST') {
+    return reply(res, tags.addTag(setId, {
+      entity_type: 'recurring', entity_id: Number(m[1]), tag: '离职',
+      effective_from: body.period || currentPeriod(), note: body.note || '',
+    }, actor));
+  }
   if (p === '/api/recurring' && method === 'GET') return reply(res, rec.plan(setId, q.period || currentPeriod()));
   if (p === '/api/recurring/templates' && method === 'GET') return reply(res, { code: 0, message: '', data: rec.listTemplates(setId) });
   if (p === '/api/recurring' && method === 'POST') return reply(res, rec.saveTemplate(setId, body, actor));

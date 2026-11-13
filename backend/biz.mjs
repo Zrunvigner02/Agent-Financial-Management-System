@@ -3,6 +3,7 @@ import * as llm from './llm.mjs';
 import * as exp from './export.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as recurring from './recurring.mjs';
+import * as tags from './tags.mjs';
 
 export const ok = (data = null, message = '') => ({ code: 0, data, message });
 export const fail = (message = '操作失败', code = 1) => ({ code, data: null, message });
@@ -1138,7 +1139,7 @@ export function createInvoiceVoucher(setId, invoiceId, user = 'admin') {
   }, user);
 }
 
-/* ---------------- MCP 19 工具 ---------------- */
+/* ---------------- MCP 工具分发（30 个） ---------------- */
 
 export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbuddy') {
   const sid = parseSetId(args.set_id || setId);
@@ -1188,6 +1189,8 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'generate_recurring': return recurring.generateForPeriod(sid, args.period || currentPeriodLocal(), user);
     case 'adjust_recurring': return adjustRecurring(sid, args, user);
     case 'recurring_reminder': return recurring.reminder(sid, args.period || currentPeriodLocal(), { mark: Boolean(args.mark), auto: args.auto !== false });
+    case 'list_tags': return { code: 0, message: '', data: tags.listTags(sid, { entity_type: args.entity_type, entity_id: args.entity_id }) };
+    case 'save_tag': return tags.addTag(sid, args, user);
     case 'get_closing_status': return closingList(sid, args.period);
     case 'create_voucher': return createVoucher(sid, args, user);
     case 'create_asset': return createAsset(sid, args);

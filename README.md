@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.3.0-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -28,7 +28,8 @@
 | --- | --- |
 | 📊 **账务核心** | 多账套隔离、科目表、凭证录入与校验、期初期末、余额与明细账、经营看板 |
 | 🤖 **AI 智能体** | DeepSeek 接入、账套上下文注入、工具调用、逐步反问对准需求 |
-| 🔁 **固定支出** | 工资 / 房租 / 社保 / 水电一次建模板，每月自动出草稿凭证；本月可直接改、下月可提前改 |
+| 🔁 **固定支出** | 工资 / 房租 / 社保 / 水电一次建模板，每月自动出草稿；左侧常驻状态栏，按人/类别可见 |
+| 🏷 **生命周期标注** | 员工离职、订单钱货两讫、款项结清等可打标注，历史月份留痕、后续自动停记 |
 | 📄 **三大报表** | 资产负债表 / 利润表 / 现金流量表，模板与公式可编辑、支持往来重分类 |
 | 📤 **导出中心** | 凭证 / 余额 / 明细 / 三大报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
 | 🔁 **格式转换** | 兼容 Filee CLI 协议的本地零依赖实现，产出 PDF / DOCX / ODS / RTF / 图片等 |
@@ -226,6 +227,15 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.4.0 更新
+
+- **前端对话真正能改数据**：`/api/agent/chat` 接入 function calling，28 个工具边聊边用；界面显示「正在查/正在改」与结果，不再只有手机端能改
+- **写操作两阶段确认**：模型的写动作先落 `pending_actions` 并回显「准备执行：…」，用户回「确认」才落库，回「取消」不动；只生成草稿，审核与记账仍要人工
+- **防假成功**：系统提示写入铁律——只有工具返回 `code=0` 才能说已修改
+- **生命周期标注**：`entity_tags` 支持 离职 / 调岗 / 钱货两讫 / 已结清 / 作废；离职当月起不再生成该员工工资，历史月份名字后带「已离职 2026-11」；标注只增不删，撤销留痕
+- **左侧固定支出状态栏**：常驻左下角胶囊（合计 + 项数 + 待生成提醒），展开按月列示人员工资与各类固定支出，带草稿/已审核/已记账状态与标注
+- **测试**：固定支出与标注 17 项
+
 ## 🆕 1.3.0 更新
 
 - **固定支出（周期性凭证）**：`recurring_templates` 模板 + `recurring_runs` 生成记录 + `recurring_overrides` 单月覆盖；一月一模板只生成一张草稿，重复触发不会重复记账
@@ -317,7 +327,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 真实 Chrome UI 验证 | 38 / 38，零 JS 异常、零 4xx/5xx |
 | 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
 | 账号体系单测 | 11 / 11（注册策略、锁定、踢线、过期、删除确认、越权） |
-| 固定支出单测 | 12 / 12（幂等生成、提醒去重、本月/下月/长期调整） |
+| 固定支出与标注单测 | 17 / 17（幂等生成、提醒去重、本月/下月/长期调整、离职、标注撤销） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -332,6 +342,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.3.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.4.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

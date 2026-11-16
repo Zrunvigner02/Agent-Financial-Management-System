@@ -36,33 +36,33 @@ const TOOL_NAMES = [
 ];
 
 const TOOL_DESCRIPTIONS = {
-  [clarify.TOOL_NAME]: clarify.TOOL_DESCRIPTION,
-  [clarify.ANALYZE_TOOL]: clarify.ANALYZE_DESCRIPTION,
-  read_attachment: '读取并解析任意格式附件（文本/CSV/JSON/MD/HTML/XLSX/DOCX/PPTX/ODT/PDF/RTF/XLS/图片），返回可录入的表格与文本',
-  get_report: '按 kind/period/format 生成本地账套真实报表，返回 columns+rows 结构化数据、行数与下载链接（不再是空 rows）',
-  data_audit: '对账套做多轮数据核验：借贷平衡、分录一致性、科目有效性、凭证号唯一、两套独立 SQL 重算看板指标、金额精度、前端单位契约；返回逐项结论与数据快照哈希，只读不改动数据',
-  create_voucher: '按摘要与分录创建记账凭证',
-  list_vouchers: '查询当前账套凭证列表',
-  list_recurring: '查询固定支出（工资/房租/社保等）当月清单：金额、是否已生成凭证、是否本月已调整',
-  save_recurring: '新建或修改固定支出模板；可按类别+金额快速生成分录，也可直接给完整分录',
-  generate_recurring: '为指定月份生成缺失的固定支出凭证（草稿、幂等，一个模板一个月只生成一张）',
-  adjust_recurring: '调整固定支出：scope=this_month 直接改本月（草稿凭证随之更新）、next_month 提前改下月、template 长期改模板',
-  recurring_reminder: '每月首条消息用：返回本月固定支出一句话摘要与调整选项，mark=true 时标记为已提醒',
-  list_tags: '查询标注（离职 / 钱货两讫 / 已结清 / 作废 等），可按对象类型与编号过滤',
-  save_tag: '给业务对象加标注：entity_type=recurring|invoice|voucher|asset，tag=离职/钱货两讫/已结清/作废，可带生效月份；只新增不删除',
-  list_attachments: '列出已上传的附件（可按月份过滤），返回文件名、大小、解析引擎、下载路径',
-  ocr_file: '识别图片/扫描件里的文字（发票、收据、截图）：优先本地 tesseract，未装则走视觉模型',
-  convert_file: '把附件或导出文件转成目标格式（pdf/docx/xlsx/csv/png 等），返回可直接打开的下载链接',
-  file_formats: '列出当前支持的解析格式、可转换目标格式与 OCR 引擎状态',
-  create_order: '新建销售订单：客户、渠道、明细（SKU/名称/数量/单价）、折扣',
-  update_order_status: '改订单状态：open 进行中 / partial 部分发货 / settled 已结清 / returning 退货中 / returned 已退货 / cancelled 已取消',
-  change_order_price: '改订单某条明细的单价（如打折、低价清仓），自动记改价流水并重算金额',
-  return_order_items: '登记退货（指定明细与数量）；全部退完自动转「已退货」',
-  add_shipment: '登记/更新物流：承运商、运单号、状态（待发货/已揽收/运输中/派送中/已签收/退回）',
-  list_orders: '查订单列表：按状态、客户、渠道、日期区间或关键词过滤',
-  order_summary: '订单汇总：按状态/渠道/客户统计单量与金额、退货率、折扣、毛利与毛利率',
-  logistics_summary: '物流汇总：各状态单量，以及超过 N 天没更新的停滞单',
-  expense_detail: '支出明细：按月与科目前缀列出凭证明细（日期、摘要、科目、金额）',
+  [clarify.TOOL_NAME]: '意图追问（多轮提问）',
+  [clarify.ANALYZE_TOOL]: '判断需求是否需追问',
+  read_attachment: '解析附件内容',
+  get_report: '生成报表',
+  data_audit: '数据核验',
+  create_voucher: '记账凭证',
+  list_vouchers: '查凭证',
+  list_recurring: '查固定支出',
+  save_recurring: '建/改固定支出',
+  generate_recurring: '生成固定支出凭证',
+  adjust_recurring: '调整固定支出',
+  recurring_reminder: '本月固定支出提醒',
+  list_tags: '查标注',
+  save_tag: '加标注',
+  list_attachments: '查附件',
+  ocr_file: '图片识别文字',
+  convert_file: '转换文件格式',
+  file_formats: '可用格式',
+  create_order: '建订单',
+  update_order_status: '改订单状态',
+  change_order_price: '改单价',
+  return_order_items: '登记退货',
+  add_shipment: '登记物流',
+  list_orders: '查订单',
+  order_summary: '订单汇总',
+  logistics_summary: '物流汇总',
+  expense_detail: '支出明细',
 };
 
 const TOOL_SCHEMAS = {
@@ -459,8 +459,49 @@ const READ_ONLY_TOOLS = new Set([
   'list_attachments', 'file_formats', 'ocr_file', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
 ]);
 
-const toolDefs = () => TOOL_NAMES
+/* 按意图挑工具：只把相关工具交给模型，避免每次都灌 40+ 个 schema */
+const TOOL_GROUPS = {
+  order: ['list_orders', 'create_order', 'update_order_status', 'change_order_price',
+    'return_order_items', 'add_shipment', 'order_summary', 'logistics_summary'],
+  recurring: ['list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder'],
+  report: ['get_report', 'list_vouchers', 'get_ledger', 'data_audit', 'expense_detail'],
+  voucher: ['create_voucher', 'list_vouchers', 'get_voucher', 'list_subjects', 'get_ledger', 'get_closing_status'],
+  file: ['list_attachments', 'ocr_file', 'convert_file', 'file_formats', 'read_attachment'],
+  tag: ['list_tags', 'save_tag'],
+  account: ['list_sets', 'list_assets', 'list_asset_categories', 'list_invoices', 'create_invoice_voucher'],
+};
+const CORE_TOOLS = ['list_sets', 'list_orders', 'list_recurring', 'get_report'];
+const INTENT_RULES = [
+  ['order', /订单|退货|退款|物流|快递|发货|签收|运单|客户|渠道|销售|单量/],
+  ['recurring', /固定支出|工资|房租|社保|公积金|水电|物业|月租|离职|调薪/],
+  ['file', /附件|文件|图片|照片|发票|扫描|ocr|识别|转(格式|成)|excel|pdf|word|docx|csv/],
+  ['tag', /标注|钱货两讫|结清|作废|离职标注/],
+  ['report', /报表|利润|资产负债|现金流|看板|趋势|毛利|收入|成本|费用|汇总|分析/],
+  ['voucher', /凭证|记账|分录|科目|账簿|余额|明细账|结账|借贷/],
+  ['account', /账号|权限|用户|密码|账套/],
+];
+
+/** 返回本轮应暴露给模型的工具名集合 */
+function pickToolNames(message) {
+  const text = String(message || '');
+  const picked = new Set(CORE_TOOLS);
+  let hit = false;
+  for (const [group, re] of INTENT_RULES) {
+    if (re.test(text)) {
+      hit = true;
+      for (const n of TOOL_GROUPS[group]) picked.add(n);
+    }
+  }
+  if (!hit) {
+    // 没识别出明确意图：给最常用的一组，避免全量注入
+    for (const n of [...TOOL_GROUPS.report, ...TOOL_GROUPS.voucher]) picked.add(n);
+  }
+  return picked;
+}
+
+const toolDefs = (allowed = null) => TOOL_NAMES
   .filter((n) => n !== clarify.TOOL_NAME && n !== clarify.ANALYZE_TOOL)
+  .filter((n) => !allowed || allowed.has(n))
   .map((n) => ({
     type: 'function',
     function: {
@@ -493,6 +534,44 @@ function summarizeAction(tool, args) {
   return `${tool}${parts.length ? '：' + parts.join('，') : ''}`;
 }
 
+/**
+ * 写操作后的回读校验：把「写入结果」与「库里现状」对一遍，给模型一个可复述的摘要。
+ * 校验不通过时不改数据，只在返回里标注，由模型如实告知用户。
+ */
+function verifyWrite(name, args, result, setId) {
+  try {
+    if (!result || result.code !== 0) return null;
+    const p = args.period || currentPeriod();
+    if (name === 'create_order' && result.data?.id) {
+      const d = ord.orderDetail(setId, result.data.id).data;
+      return { verified: true, check: `订单 ${d.order.order_no} 应收 ${Number(d.order.amount) - Number(d.order.discount)}，状态 ${d.order.status}` };
+    }
+    if (['update_order_status', 'change_order_price', 'return_order_items', 'add_shipment'].includes(name)) {
+      const id = result.data?.id || args.id;
+      if (!id) return null;
+      const d = ord.orderDetail(setId, id).data;
+      return { verified: true, check: `订单 ${d.order.order_no} 当前 ${d.order.status}，应收 ${Number(d.order.amount) - Number(d.order.discount)}` };
+    }
+    if (['save_recurring', 'adjust_recurring', 'generate_recurring'].includes(name)) {
+      const plan = rec.plan(setId, p).data;
+      return { verified: true, check: `${p} 固定支出 ${plan.count} 项合计 ${plan.total}，已生成 ${plan.generated} 张` };
+    }
+    if (name === 'create_voucher' && result.data?.id) {
+      const v = biz.getVoucher(setId, result.data.id);
+      if (v && v.code === 0) {
+        const sum = (v.data.entries || []).reduce((s2, e) => s2 + Number(e.debit || 0), 0);
+        return { verified: true, check: `凭证 ${v.data.word}-${v.data.no} 借贷合计 ${sum}，状态 ${v.data.status}` };
+      }
+    }
+    if (name === 'save_tag') {
+      return { verified: true, check: `已标注 ${result.data?.tag || args.tag}` };
+    }
+    return null;
+  } catch {
+    return { verified: false, check: '写入后回读失败，请让用户人工核对' };
+  }
+}
+
 /** 执行一次工具；写操作只落草稿，返回结构化结果 */
 async function runToolSafe(setId, name, args, user, token = '') {
   try {
@@ -504,7 +583,7 @@ async function runToolSafe(setId, name, args, user, token = '') {
   }
 }
 
-async function agentChat(res, body, setId) {
+async function agentChat(res, body, setId, authToken = '') {
   sseHead(res);
   const message = body.message || '';
   const sessionId = body.session_id || randomUUID();
@@ -518,7 +597,7 @@ async function agentChat(res, body, setId) {
   if (pending) {
     if (CONFIRM_RE.test(message.trim())) {
       const args = JSON.parse(pending.args || '{}');
-      const r = await runToolSafe(setId, pending.tool, args, body.__actor || 'agent', bearer(req.headers.authorization));
+      const r = await runToolSafe(setId, pending.tool, args, body.__actor || 'agent', authToken);
       clearPending(pending.id, r.code === 0 ? 'done' : 'failed');
       const text = r.code === 0
         ? `已执行：${pending.summary}\n${r.message || ''}${r.data?.voucher_id ? `（凭证 #${r.data.voucher_id}，草稿）` : ''}`
@@ -584,8 +663,9 @@ async function agentChat(res, body, setId) {
   res.on('close', clearTimers);
 
   const history = biz.agentMessages(sessionId).data.slice(-10).map((m) => ({ role: m.role, content: m.content }));
+  const allowedTools = pickToolNames(message);
   const messages = [
-    { role: 'system', content: `${biz.agentSystemPrompt(setId)}\n\n【工具使用铁律】\n1. 只有工具返回 code=0 才能说「已修改/已完成」，禁止凭空声称改了数据。\n2. 写操作（新增/修改/删除）会先返回「待确认」，由用户回复确认后才真正执行；不要自己说已经改完。\n3. 改动前先复述对象、期间、金额、影响凭证数，让用户确认。\n4. 生成的凭证一律是草稿，不能替用户审核或记账。` },
+    { role: 'system', content: `${biz.agentSystemPrompt(setId)}\n\n【工具铁律】\n1. 只有工具返回 code=0 才能说「已修改」，禁止凭空汇报。\n2. 写操作先返回「待确认」，用户回确认才落库；凭证只出草稿，不替人审核记账。\n3. 数据写成功后必须给「变更摘要」：对象、期间、金额、前后差异；校验失败要如实说明并回滚。\n4. 涉及代码、配置、表结构、前端脚本的改动，一律先列 3-6 条条例等用户确认，不得边说边改，也不得声称已改。\n5. 回复简洁：先结论与关键数字，用户要求再展开。` },
     ...history,
   ];
 
@@ -598,7 +678,7 @@ async function agentChat(res, body, setId) {
       const upstream = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model, stream: true, messages, tools: toolDefs(), tool_choice: 'auto' }),
+        body: JSON.stringify({ model, stream: true, messages, tools: toolDefs(allowedTools), tool_choice: 'auto' }),
         signal: controller.signal,
       });
       if (!upstream.ok || !upstream.body) {
@@ -666,7 +746,11 @@ async function agentChat(res, body, setId) {
         }
 
         sse(res, 'tool', { status: 'running', name: c.name, label: TOOL_DESCRIPTIONS[c.name] || c.name });
-        const result = await runToolSafe(setId, c.name, args, body.__actor || 'agent', bearer(req.headers.authorization));
+        const result = await runToolSafe(setId, c.name, args, body.__actor || 'agent', authToken);
+        if (!READ_ONLY_TOOLS.has(c.name)) {
+          const v = verifyWrite(c.name, args, result, setId);
+          if (v) result.verified = v;
+        }
         messages.push({
           role: 'tool',
           tool_call_id: callId,
@@ -1128,7 +1212,7 @@ async function handle(req, res) {
     return reply(res, biz.ok({ payload: clarify.lastOf(q.session_id || '') }));
   }
 
-  if (p === '/api/agent/chat' && method === 'POST') return agentChat(res, body, setId);
+  if (p === '/api/agent/chat' && method === 'POST') return agentChat(res, body, setId, bearer(req.headers.authorization));
 
   // 辅助档案 / 资产 / 发票
   if (p === '/api/auxiliaries' && method === 'GET') return reply(res, biz.listAuxiliaries(setId));

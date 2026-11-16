@@ -13,6 +13,7 @@ import * as attachment from './attachment.mjs';
 import * as ocr from './ocr.mjs';
 import * as fileops from './fileops.mjs';
 import * as ord from './orders.mjs';
+import { pickToolNames, needsFullRetry } from './toolrouter.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
@@ -459,46 +460,6 @@ const READ_ONLY_TOOLS = new Set([
   'list_attachments', 'file_formats', 'ocr_file', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
 ]);
 
-/* 按意图挑工具：只把相关工具交给模型，避免每次都灌 40+ 个 schema */
-const TOOL_GROUPS = {
-  order: ['list_orders', 'create_order', 'update_order_status', 'change_order_price',
-    'return_order_items', 'add_shipment', 'order_summary', 'logistics_summary'],
-  recurring: ['list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder'],
-  report: ['get_report', 'list_vouchers', 'get_ledger', 'data_audit', 'expense_detail'],
-  voucher: ['create_voucher', 'list_vouchers', 'get_voucher', 'list_subjects', 'get_ledger', 'get_closing_status'],
-  file: ['list_attachments', 'ocr_file', 'convert_file', 'file_formats', 'read_attachment'],
-  tag: ['list_tags', 'save_tag'],
-  account: ['list_sets', 'list_assets', 'list_asset_categories', 'list_invoices', 'create_invoice_voucher'],
-};
-const CORE_TOOLS = ['list_sets', 'list_orders', 'list_recurring', 'get_report'];
-const INTENT_RULES = [
-  ['order', /订单|退货|退款|物流|快递|发货|签收|运单|客户|渠道|销售|单量/],
-  ['recurring', /固定支出|工资|房租|社保|公积金|水电|物业|月租|离职|调薪/],
-  ['file', /附件|文件|图片|照片|发票|扫描|ocr|识别|转(格式|成)|excel|pdf|word|docx|csv/],
-  ['tag', /标注|钱货两讫|结清|作废|离职标注/],
-  ['report', /报表|利润|资产负债|现金流|看板|趋势|毛利|收入|成本|费用|汇总|分析/],
-  ['voucher', /凭证|记账|分录|科目|账簿|余额|明细账|结账|借贷/],
-  ['account', /账号|权限|用户|密码|账套/],
-];
-
-/** 返回本轮应暴露给模型的工具名集合 */
-function pickToolNames(message) {
-  const text = String(message || '');
-  const picked = new Set(CORE_TOOLS);
-  let hit = false;
-  for (const [group, re] of INTENT_RULES) {
-    if (re.test(text)) {
-      hit = true;
-      for (const n of TOOL_GROUPS[group]) picked.add(n);
-    }
-  }
-  if (!hit) {
-    // 没识别出明确意图：给最常用的一组，避免全量注入
-    for (const n of [...TOOL_GROUPS.report, ...TOOL_GROUPS.voucher]) picked.add(n);
-  }
-  return picked;
-}
-
 const toolDefs = (allowed = null) => TOOL_NAMES
   .filter((n) => n !== clarify.TOOL_NAME && n !== clarify.ANALYZE_TOOL)
   .filter((n) => !allowed || allowed.has(n))
@@ -663,15 +624,18 @@ async function agentChat(res, body, setId, authToken = '') {
   res.on('close', clearTimers);
 
   const history = biz.agentMessages(sessionId).data.slice(-10).map((m) => ({ role: m.role, content: m.content }));
-  const allowedTools = pickToolNames(message);
+  const route = pickToolNames(message, { allTools: TOOL_NAMES });
+  let allowedTools = route.names;
   const messages = [
-    { role: 'system', content: `${biz.agentSystemPrompt(setId)}\n\n【工具铁律】\n1. 只有工具返回 code=0 才能说「已修改」，禁止凭空汇报。\n2. 写操作先返回「待确认」，用户回确认才落库；凭证只出草稿，不替人审核记账。\n3. 数据写成功后必须给「变更摘要」：对象、期间、金额、前后差异；校验失败要如实说明并回滚。\n4. 涉及代码、配置、表结构、前端脚本的改动，一律先列 3-6 条条例等用户确认，不得边说边改，也不得声称已改。\n5. 回复简洁：先结论与关键数字，用户要求再展开。` },
+    { role: 'system', content: `${biz.agentSystemPrompt(setId)}\n\n【工具铁律】\n1. 只有工具返回 code=0 才能说「已修改」，禁止凭空汇报。\n2. 写操作先返回「待确认」，用户回确认才落库；凭证只出草稿，不替人审核记账。\n3. 数据写成功后必须给「变更摘要」：对象、期间、金额、前后差异；校验失败要如实说明并回滚。\n4. 涉及代码、配置、表结构、前端脚本的改动，一律先列 3-6 条条例等用户确认，不得边说边改，也不得声称已改。\n5. 回复简洁：先结论与关键数字，用户要求再展开。\n6. 能力边界：若现有数据/工具不足以判断（如缺订单、缺科目、缺期间），不要硬调工具，直接说明缺什么、给出可执行的下一步或基于现有数据的分析结论。` },
     ...history,
   ];
 
   try {
     let rounds = 0;
     let pendingCreated = false;
+    let usedTool = false;
+    let retried = false;
 
     while (rounds < 4 && !pendingCreated) {
       rounds += 1;
@@ -746,6 +710,7 @@ async function agentChat(res, body, setId, authToken = '') {
         }
 
         sse(res, 'tool', { status: 'running', name: c.name, label: TOOL_DESCRIPTIONS[c.name] || c.name });
+        usedTool = true;
         const result = await runToolSafe(setId, c.name, args, body.__actor || 'agent', authToken);
         if (!READ_ONLY_TOOLS.has(c.name)) {
           const v = verifyWrite(c.name, args, result, setId);
@@ -758,6 +723,16 @@ async function agentChat(res, body, setId, authToken = '') {
         });
         sse(res, 'tool', { status: 'done', name: c.name, ok: result.code === 0 });
       }
+    }
+    // 能力边界兜底：首轮没调工具且明确说做不到 → 用全量工具再试一次（只一次）
+    if (!usedTool && !pendingCreated && needsFullRetry(answer, usedTool) && !retried) {
+      retried = true;
+      allowedTools = pickToolNames(message, { full: true, allTools: TOOL_NAMES }).names;
+      messages.push({ role: 'system', content: '上一轮因工具权限不足未完成。现在已开放全部工具，请重新判断并调用合适的工具；若确实缺少数据，直接说明缺什么，不要编造。' });
+      rounds = 0;
+      const retryText = '\n\n（正在用完整工具集重试…）\n';
+      answer += retryText;
+      for (const chunk of textChunks(retryText)) sse(res, 'content', { text: chunk });
     }
     if (!gotFirstToken && !answer) throw new Error('模型未返回任何内容');
   } catch (e) {

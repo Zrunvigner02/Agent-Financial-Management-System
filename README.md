@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.6.2-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.3-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -279,6 +279,13 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.6.3 更新
+
+- **意图路由独立成模块**：`backend/toolrouter.mjs`，七组关键词 + 同义词（退单/几单/赚/应收/记账/管理员等），命中多组取并集
+- **兜底两层**：无命中时给「核心 + 订单 + 报表」中等集合；首轮没调工具且回复出现「无法/不支持/查不到」时，自动带全量工具重试一次
+- **能力边界处理**：数据不足时不再硬调工具，直接说明缺什么或给出基于现有数据的分析
+- **测试**：`tools/test-toolrouter.mjs` 20 项（真实说法命中 + 分组完整性 + 兜底判定）
+
 ## 🆕 1.6.2 更新
 
 - **按意图装工具**：每轮只把相关工具交给模型（订单类 3–8 个、报表类 5 个），不再每次灌 41 个 schema，输入 token 降约七成
@@ -431,6 +438,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 附件留档单测 | 6 / 6（存储路径、内容去重、元数据、列表、清理） |
 | 文件能力单测 | 7 / 7（附件列表、格式自检、转换、OCR 分支） |
 | 订单流程单测 | 10 / 10（建单、状态流转、改价、退货、物流、汇总、明细账时间线） |
+| 意图路由单测 | 20 / 20（真实说法命中、并集、兜底、重试判定） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -445,6 +453,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.6.2** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.6.3** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

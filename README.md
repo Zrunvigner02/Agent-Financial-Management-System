@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.5.0-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.0-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -80,6 +80,7 @@
 | 🤖 **AI 智能体** | DeepSeek 接入、账套上下文注入、工具调用、逐步反问对准需求 |
 | 🔁 **固定支出** | 工资 / 房租 / 社保 / 水电一次建模板，每月自动出草稿；左侧常驻状态栏，按人/类别可见 |
 | 🏷 **生命周期标注** | 员工离职、订单钱货两讫、款项结清等可打标注，历史月份留痕、后续自动停记 |
+| 🧾 **订单管理** | 进行中 / 部分发货 / 已结清 / 退货 / 改价（低价销售），物流状态与停滞提醒，按状态、渠道、客户汇总 |
 | 📄 **三大报表** | 资产负债表 / 利润表 / 现金流量表，模板与公式可编辑、支持往来重分类 |
 | 📤 **导出中心** | 凭证 / 余额 / 明细 / 三大报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
 | 🔁 **格式转换** | 兼容 Filee 协议，零依赖产出 PDF / DOCX / ODS / RTF / 图片；智能体可一句话转换并回传下载链接 |
@@ -278,6 +279,18 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.6.0 更新
+
+- **订单全流程**：`orders` / `order_items` / `order_events` / `order_price_changes` / `order_shipments` 五张表；状态支持进行中、部分发货、已结清、退货中、已退货、已取消
+- **退货与改价**：支持按明细部分退货、全部退完自动转「已退货」；改价记录原价→新价与原因，自动重算订单金额，可用于低价销售分析
+- **物流汇总**：按待发货 / 已揽收 / 运输中 / 派送中 / 已签收 / 退回统计，超过 N 天未更新自动列为停滞单
+- **汇总分析**：按状态、渠道、TOP 客户统计单量与金额，另算退货率、平均折扣、毛利与毛利率
+- **前端抽屉**：左下角「订单」胶囊（进行中 / 本月单量），右侧抽屉含订单列表、订单详情（明细、时间线、物流、改价）与支出明细页签
+- **支出明细**：`GET /api/expenses/detail`，抽屉里可看每笔凭证并一键导出 Excel
+- **导出**：导出中心新增 `orders`、`expenses` 两种 kind
+- **工具**：新增 9 个（共 41 个）
+- **测试**：`tools/test-orders.mjs` 9 项
+
 ## 🆕 1.5.0 更新
 
 - **文件能力接入智能体**：新增 `list_attachments` / `ocr_file` / `convert_file` / `file_formats` 四个工具，共 34 个
@@ -403,6 +416,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 固定支出与标注单测 | 17 / 17（幂等生成、提醒去重、本月/下月/长期调整、离职、标注撤销） |
 | 附件留档单测 | 6 / 6（存储路径、内容去重、元数据、列表、清理） |
 | 文件能力单测 | 7 / 7（附件列表、格式自检、转换、OCR 分支） |
+| 订单流程单测 | 9 / 9（建单、状态流转、改价、退货、物流、汇总） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -417,6 +431,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.5.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.6.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

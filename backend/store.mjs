@@ -338,6 +338,78 @@ CREATE TABLE IF NOT EXISTS pending_actions (
 );
 CREATE INDEX IF NOT EXISTS idx_pending_session ON pending_actions(session_id, status);
 
+
+/* 订单：状态流转 / 明细 / 改价 / 退货 / 物流 */
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  order_no TEXT NOT NULL,
+  customer TEXT NOT NULL DEFAULT '',
+  channel TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  amount REAL NOT NULL DEFAULT 0,
+  discount REAL NOT NULL DEFAULT 0,
+  cost REAL NOT NULL DEFAULT 0,
+  order_date TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(set_id, order_no)
+);
+CREATE INDEX IF NOT EXISTS idx_orders_set ON orders(set_id, status, order_date);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  sku TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  qty REAL NOT NULL DEFAULT 0,
+  unit_price REAL NOT NULL DEFAULT 0,
+  amount REAL NOT NULL DEFAULT 0,
+  returned_qty REAL NOT NULL DEFAULT 0,
+  cost REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_order_items ON order_items(order_id);
+
+CREATE TABLE IF NOT EXISTS order_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT 'note',
+  from_v TEXT NOT NULL DEFAULT '',
+  to_v TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  effective_at TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_order_events ON order_events(order_id, id);
+
+CREATE TABLE IF NOT EXISTS order_price_changes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  item_id INTEGER,
+  old_price REAL NOT NULL DEFAULT 0,
+  new_price REAL NOT NULL DEFAULT 0,
+  reason TEXT NOT NULL DEFAULT '',
+  effective_at TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_order_price ON order_price_changes(order_id);
+
+CREATE TABLE IF NOT EXISTS order_shipments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  carrier TEXT NOT NULL DEFAULT '',
+  tracking_no TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',
+  last_event TEXT NOT NULL DEFAULT '',
+  last_event_at TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_order_ship ON order_shipments(order_id, id);
+
 CREATE TABLE IF NOT EXISTS app_state (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL DEFAULT '',

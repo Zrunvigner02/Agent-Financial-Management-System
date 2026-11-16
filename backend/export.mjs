@@ -177,6 +177,64 @@ function queryDashboard(db, setId, period) {
   };
 }
 
+/** 订单列表（供导出中心与智能体出 Excel） */
+function queryOrders(db, setId, period) {
+  const where = period ? " AND substr(o.order_date,1,7) = ?" : '';
+  const params = period ? [setId, period] : [setId];
+  const rows = db.prepare(`SELECT o.*, 
+      (SELECT carrier FROM order_shipments s WHERE s.order_id = o.id ORDER BY s.id DESC LIMIT 1) AS carrier,
+      (SELECT tracking_no FROM order_shipments s WHERE s.order_id = o.id ORDER BY s.id DESC LIMIT 1) AS tracking_no,
+      (SELECT status FROM order_shipments s WHERE s.order_id = o.id ORDER BY s.id DESC LIMIT 1) AS ship_status
+    FROM orders o WHERE o.set_id = ?${where} ORDER BY o.order_date DESC, o.id DESC`).all(...params);
+  const LABEL = { open: '进行中', partial: '部分发货', settled: '已结清', returning: '退货中', returned: '已退货', cancelled: '已取消' };
+  const SHIP = { pending: '待发货', picked: '已揽收', transit: '运输中', delivering: '派送中', signed: '已签收', returned: '退回' };
+  const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+  return {
+    title: '销售订单',
+    columns: [
+      { key: 'order_no', label: '订单号' }, { key: 'order_date', label: '日期' },
+      { key: 'customer', label: '客户' }, { key: 'channel', label: '渠道' },
+      { key: 'status', label: '状态' },
+      { key: 'amount', label: '金额', type: 'number' }, { key: 'discount', label: '折扣', type: 'number' },
+      { key: 'net', label: '应收', type: 'number' }, { key: 'cost', label: '成本', type: 'number' },
+      { key: 'profit', label: '毛利', type: 'number' },
+      { key: 'ship', label: '物流状态' }, { key: 'tracking', label: '运单号' },
+    ],
+    rows: rows.map((o) => ({
+      order_no: o.order_no, order_date: o.order_date, customer: o.customer, channel: o.channel,
+      status: LABEL[o.status] || o.status,
+      amount: r2(o.amount), discount: r2(o.discount),
+      net: r2(Number(o.amount) - Number(o.discount)), cost: r2(o.cost),
+      profit: r2(Number(o.amount) - Number(o.discount) - Number(o.cost)),
+      ship: o.ship_status ? (SHIP[o.ship_status] || o.ship_status) : '未登记',
+      tracking: o.tracking_no || '',
+    })),
+  };
+}
+
+/** 支出明细（凭证明细） */
+function queryExpenses(db, setId, period) {
+  const rows = db.prepare(`SELECT v.date, v.word, v.no, e.summary, e.subject_code, e.subject_name, e.debit, e.credit
+    FROM voucher_entries e JOIN vouchers v ON v.id = e.voucher_id
+    WHERE v.set_id = ? AND v.period = ? AND v.status != 'void'
+    ORDER BY v.date, v.id, e.line`).all(setId, period);
+  const r2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+  return {
+    title: '支出明细',
+    columns: [
+      { key: 'date', label: '日期' }, { key: 'voucher', label: '凭证号' },
+      { key: 'summary', label: '摘要' }, { key: 'subject', label: '科目' },
+      { key: 'debit', label: '借方', type: 'number' }, { key: 'credit', label: '贷方', type: 'number' },
+      { key: 'amount', label: '净额', type: 'number' },
+    ],
+    rows: rows.map((r) => ({
+      date: r.date, voucher: `${r.word}-${r.no}`, summary: r.summary,
+      subject: `${r.subject_code} ${r.subject_name}`,
+      debit: r2(r.debit), credit: r2(r.credit), amount: r2(Number(r.debit) - Number(r.credit)),
+    })),
+  };
+}
+
 const BUILDERS = {
   vouchers: queryVouchers, ledger: queryLedger,
   dashboard: queryDashboard, subjects: querySubjects,
@@ -184,6 +242,8 @@ const BUILDERS = {
   balance: (db, setId, period) => buildStatementTable(db, setId, 'balance', period),
   income: (db, setId, period) => buildStatementTable(db, setId, 'income', period),
   cash: (db, setId, period) => buildStatementTable(db, setId, 'cash', period),
+  orders: queryOrders,
+  expenses: queryExpenses,
 };
 
 /* ---------------- 渲染 ---------------- */

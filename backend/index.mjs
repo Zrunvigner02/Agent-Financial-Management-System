@@ -12,6 +12,7 @@ import * as clarify from './clarify.mjs';
 import * as attachment from './attachment.mjs';
 import * as ocr from './ocr.mjs';
 import * as fileops from './fileops.mjs';
+import * as ord from './orders.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
@@ -29,6 +30,8 @@ const TOOL_NAMES = [
   'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
   'list_tags', 'save_tag',
   'list_attachments', 'ocr_file', 'convert_file', 'file_formats',
+  'create_order', 'update_order_status', 'change_order_price', 'return_order_items',
+  'add_shipment', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
   clarify.TOOL_NAME, clarify.ANALYZE_TOOL, 'read_attachment', 'data_audit',
 ];
 
@@ -51,9 +54,90 @@ const TOOL_DESCRIPTIONS = {
   ocr_file: '识别图片/扫描件里的文字（发票、收据、截图）：优先本地 tesseract，未装则走视觉模型',
   convert_file: '把附件或导出文件转成目标格式（pdf/docx/xlsx/csv/png 等），返回可直接打开的下载链接',
   file_formats: '列出当前支持的解析格式、可转换目标格式与 OCR 引擎状态',
+  create_order: '新建销售订单：客户、渠道、明细（SKU/名称/数量/单价）、折扣',
+  update_order_status: '改订单状态：open 进行中 / partial 部分发货 / settled 已结清 / returning 退货中 / returned 已退货 / cancelled 已取消',
+  change_order_price: '改订单某条明细的单价（如打折、低价清仓），自动记改价流水并重算金额',
+  return_order_items: '登记退货（指定明细与数量）；全部退完自动转「已退货」',
+  add_shipment: '登记/更新物流：承运商、运单号、状态（待发货/已揽收/运输中/派送中/已签收/退回）',
+  list_orders: '查订单列表：按状态、客户、渠道、日期区间或关键词过滤',
+  order_summary: '订单汇总：按状态/渠道/客户统计单量与金额、退货率、折扣、毛利与毛利率',
+  logistics_summary: '物流汇总：各状态单量，以及超过 N 天没更新的停滞单',
+  expense_detail: '支出明细：按月与科目前缀列出凭证明细（日期、摘要、科目、金额）',
 };
 
 const TOOL_SCHEMAS = {
+  create_order: {
+    type: 'object',
+    properties: {
+      order_no: { type: 'string', description: '不填自动生成' },
+      customer: { type: 'string' },
+      channel: { type: 'string', description: '渠道，如 天猫/抖音/线下' },
+      order_date: { type: 'string', description: 'YYYY-MM-DD' },
+      discount: { type: 'number' },
+      note: { type: 'string' },
+      items: {
+        type: 'array',
+        description: '明细：[{sku,name,qty,unit_price,cost}]',
+        items: { type: 'object' },
+      },
+    },
+    required: ['items'],
+  },
+  update_order_status: {
+    type: 'object',
+    properties: {
+      id: { type: 'number' },
+      order_no: { type: 'string', description: '或用订单号指定' },
+      status: { type: 'string' },
+      note: { type: 'string' },
+    },
+  },
+  change_order_price: {
+    type: 'object',
+    properties: {
+      id: { type: 'number' }, order_no: { type: 'string' },
+      item_id: { type: 'number' }, sku: { type: 'string', description: '或用 SKU 指定明细' },
+      new_price: { type: 'number' }, reason: { type: 'string' },
+    },
+    required: ['new_price'],
+  },
+  return_order_items: {
+    type: 'object',
+    properties: {
+      id: { type: 'number' }, order_no: { type: 'string' },
+      item_id: { type: 'number' }, sku: { type: 'string' },
+      qty: { type: 'number', description: '不传表示整单全退' },
+      reason: { type: 'string' },
+    },
+  },
+  add_shipment: {
+    type: 'object',
+    properties: {
+      id: { type: 'number' }, order_no: { type: 'string' },
+      carrier: { type: 'string' }, tracking_no: { type: 'string' },
+      status: { type: 'string' }, last_event: { type: 'string' },
+    },
+  },
+  list_orders: {
+    type: 'object',
+    properties: {
+      status: { type: 'string' }, customer: { type: 'string' }, channel: { type: 'string' },
+      from: { type: 'string' }, to: { type: 'string' }, q: { type: 'string' }, limit: { type: 'number' },
+    },
+  },
+  order_summary: {
+    type: 'object',
+    properties: { period: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' } },
+  },
+  logistics_summary: {
+    type: 'object',
+    properties: { period: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' }, stale_days: { type: 'number' } },
+  },
+  expense_detail: {
+    type: 'object',
+    properties: { period: { type: 'string' }, code: { type: 'string', description: '科目前缀，如 6602' }, limit: { type: 'number' } },
+    required: ['period'],
+  },
   list_attachments: {
     type: 'object',
     properties: {
@@ -177,7 +261,7 @@ const TOOL_SCHEMAS = {
     properties: {
       kind: {
         type: 'string',
-        enum: ['vouchers', 'ledger', 'dashboard', 'subjects', 'balance', 'income', 'cash'],
+        enum: ['vouchers', 'ledger', 'dashboard', 'subjects', 'balance', 'income', 'cash', 'orders', 'expenses'],
         description: '报表类型：凭证清单 / 科目余额表 / 经营概览 / 会计科目表',
       },
       period: { type: 'string', description: '期间 YYYY-MM，留空取当前月' },
@@ -372,7 +456,7 @@ const READ_ONLY_TOOLS = new Set([
   'list_assets', 'list_asset_categories', 'list_subjects', 'list_auxiliaries',
   'list_invoices', 'get_closing_status', 'list_invoice_templates',
   'list_recurring', 'recurring_reminder', 'read_attachment', 'data_audit', 'list_tags',
-  'list_attachments', 'file_formats', 'ocr_file',
+  'list_attachments', 'file_formats', 'ocr_file', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
 ]);
 
 const toolDefs = () => TOOL_NAMES
@@ -670,7 +754,7 @@ async function handle(req, res) {
   }
 
   // 下载链接需要能在浏览器里直接点开：允许 /api/export/download 用查询参数带 token
-  const queryToken = (p === '/api/export/download' && typeof q.token === 'string') ? q.token : '';
+  const queryToken = (['/api/export/download', '/api/export/report'].includes(p) && typeof q.token === 'string') ? q.token : '';
   const user = biz.userFromToken(bearer(req.headers.authorization) || queryToken);
   if (!user) return sendJson(res, 401, { code: 401, message: '未登录或登录已过期' });
 
@@ -688,7 +772,7 @@ async function handle(req, res) {
   }
   // 记账写操作：管理员或 会计/出纳 角色，普通用户只读
   const WRITE_PREFIX = ['/api/vouchers', '/api/assets', '/api/invoices', '/api/subjects',
-    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring', '/api/tags'];
+    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring', '/api/tags', '/api/orders'];
   if (['POST', 'PUT', 'DELETE'].includes(method)
     && WRITE_PREFIX.some((x) => p === x || p.startsWith(`${x}/`))
     && !biz.canWrite(user)) {
@@ -761,6 +845,24 @@ async function handle(req, res) {
   // 凭证
   if (p === '/api/vouchers' && method === 'GET') return reply(res, biz.listVouchers(setId, q));
   if (p === '/api/vouchers' && method === 'POST') return reply(res, biz.createVoucher(setId, body, actor));
+
+  // ---------------- 订单 / 物流 / 支出明细 ----------------
+  if (p === '/api/orders' && method === 'GET') return reply(res, ord.listOrders(setId, q));
+  if (p === '/api/orders' && method === 'POST') return reply(res, ord.createOrder(setId, body, actor));
+  if (p === '/api/orders/summary' && method === 'GET') return reply(res, ord.orderSummary(setId, q));
+  if (p === '/api/orders/logistics' && method === 'GET') return reply(res, ord.logisticsSummary(setId, q));
+  m = p.match(/^\/api\/orders\/(\d+)$/);
+  if (m && method === 'GET') return reply(res, ord.orderDetail(setId, Number(m[1])));
+  m = p.match(/^\/api\/orders\/(\d+)\/(status|price|return|shipment)$/);
+  if (m && method === 'POST') {
+    const id = Number(m[1]);
+    const action = m[2];
+    if (action === 'status') return reply(res, ord.updateStatus(setId, id, body.status, body.note, actor));
+    if (action === 'price') return reply(res, ord.changePrice(setId, id, body, actor));
+    if (action === 'return') return reply(res, ord.returnItems(setId, id, body, actor));
+    return reply(res, ord.addShipment(setId, id, body, actor));
+  }
+  if (p === '/api/expenses/detail' && method === 'GET') return reply(res, ord.expenseDetail(setId, q));
 
   // ---------------- 固定支出（周期性凭证） ----------------
   // ---------------- 标注（离职 / 钱货两讫 / 已结清 等） ----------------

@@ -5,6 +5,7 @@ import * as sessionTitle from './session-title.mjs';
 import * as recurring from './recurring.mjs';
 import * as tags from './tags.mjs';
 import * as fileops from './fileops.mjs';
+import * as orders from './orders.mjs';
 
 export const ok = (data = null, message = '') => ({ code: 0, data, message });
 export const fail = (message = '操作失败', code = 1) => ({ code, data: null, message });
@@ -1159,6 +1160,8 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
         'income-statement': 'income', income: 'income', profit: 'income',
         'cash-flow': 'cash', cash: 'cash', cashflow: 'cash',
         overview: 'dashboard', 'subject-list': 'subjects',
+        order: 'orders', 'order-list': 'orders', 'sales-order': 'orders',
+        'expense-detail': 'expenses', expenses: 'expenses',
       };
       const raw = String(args.kind || args.type || 'vouchers').trim();
       const kind = alias[raw.toLowerCase()] || raw;
@@ -1195,6 +1198,23 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'ocr_file': return fileops.ocrFile(sid, args);
     case 'convert_file': return fileops.convertFile(sid, args);
     case 'file_formats': return fileops.supportedFormats();
+    case 'create_order': return orders.createOrder(sid, args, user);
+    case 'update_order_status': return orders.updateStatus(sid, resolveOrderId(sid, args), args.status, args.note, user);
+    case 'change_order_price': {
+      const oid = resolveOrderId(sid, args);
+      const itemId = args.item_id || itemIdBySku(sid, oid, args.sku);
+      return orders.changePrice(sid, oid, { item_id: itemId, new_price: args.new_price, reason: args.reason }, user);
+    }
+    case 'return_order_items': {
+      const oid = resolveOrderId(sid, args);
+      const itemId = args.item_id || (args.sku ? itemIdBySku(sid, oid, args.sku) : undefined);
+      return orders.returnItems(sid, oid, { item_id: itemId, qty: args.qty, reason: args.reason }, user);
+    }
+    case 'add_shipment': return orders.addShipment(sid, resolveOrderId(sid, args), args, user);
+    case 'list_orders': return orders.listOrders(sid, args);
+    case 'order_summary': return orders.orderSummary(sid, args);
+    case 'logistics_summary': return orders.logisticsSummary(sid, args);
+    case 'expense_detail': return orders.expenseDetail(sid, args);
     case 'save_tag': return tags.addTag(sid, args, user);
     case 'get_closing_status': return closingList(sid, args.period);
     case 'create_voucher': return createVoucher(sid, args, user);
@@ -1264,3 +1284,20 @@ const nextPeriod = (period) => {
   const m = Number(period.slice(5, 7)) + 1;
   return m > 12 ? `${y + 1}-01` : `${y}-${String(m).padStart(2, '0')}`;
 };
+
+/* ---------------- 订单工具辅助 ---------------- */
+
+function resolveOrderId(setId, args = {}) {
+  if (args.id) return Number(args.id);
+  if (args.order_no) {
+    const row = get('SELECT id FROM orders WHERE set_id = ? AND order_no = ?', setId, String(args.order_no));
+    if (row) return row.id;
+  }
+  return 0;
+}
+
+function itemIdBySku(setId, orderId, sku) {
+  if (!orderId || !sku) return undefined;
+  const row = get('SELECT i.id FROM order_items i JOIN orders o ON o.id = i.order_id WHERE i.order_id = ? AND i.sku = ?', orderId, String(sku));
+  return row ? row.id : undefined;
+}

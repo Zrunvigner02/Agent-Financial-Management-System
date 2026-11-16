@@ -141,10 +141,11 @@
 
   async function render() {
     if (!drawer) return;
-    const head = `<div class="zd-od-hd"><h3>${detail ? '订单详情' : (tab === 'orders' ? '订单' : '支出明细')}</h3><span class="zd-od-x" data-act="close">×</span></div>`;
+    const head = `<div class="zd-od-hd"><h3>${detail ? '订单详情' : (tab === 'orders' ? '订单' : tab === 'expenses' ? '支出明细' : '明细账')}</h3><span class="zd-od-x" data-act="close">×</span></div>`;
     const tabs = detail ? `<span class="zd-od-back" data-act="back">← 返回列表</span>` : `<div class="zd-od-tabs">
         <div class="zd-od-tab ${tab === 'orders' ? 'on' : ''}" data-act="tab" data-tab="orders">订单</div>
         <div class="zd-od-tab ${tab === 'expenses' ? 'on' : ''}" data-act="tab" data-tab="expenses">支出明细</div>
+        <div class="zd-od-tab ${tab === 'ledger' ? 'on' : ''}" data-act="tab" data-tab="ledger">明细账</div>
       </div>`;
 
     let body = '<div class="zd-od-empty">加载中…</div>';
@@ -162,6 +163,20 @@
           </div>`).join('')
         : '<div class="zd-od-empty">本月还没有订单。<br>对智能体说「建个订单，客户张三，面膜 2 盒 129 元」即可。</div>';
       foot = `<div class="zd-od-foot"><button data-act="refresh">刷新</button><button class="primary" data-act="exp-xlsx">导出订单 Excel</button></div>`;
+    } else if (tab === 'ledger') {
+      const j = await api(`/api/ledger/timeline?period=${period()}&limit=300`);
+      const d = j.data || { items: [] };
+      body = d.items.length
+        ? `<div class="zd-od-sec"><h4>${period()} · 凭证 ${d.vouchers} 条 · 订单 ${d.orders} 条（按日期倒序）</h4></div>` +
+          d.items.map((x) => `<div class="zd-od-row" ${x.kind === 'order' ? `data-act="detail" data-id="${x.order_id}"` : ''}>
+            <div class="zd-od-line">
+              <span>${x.kind === 'order' ? '🧾 ' : ''}${x.title || '—'}</span>
+              <span class="zd-od-amt">${money(x.amount)}</span>
+            </div>
+            <div class="zd-od-sub">${x.date} · ${x.ref}${x.sub ? ` · ${x.sub}` : ''}</div>
+          </div>`).join('')
+        : '<div class="zd-od-empty">本月还没有凭证或订单。</div>';
+      foot = `<div class="zd-od-foot"><button data-act="refresh">刷新</button><button class="primary" data-act="exp-xlsx">导出支出明细</button></div>`;
     } else {
       const j = await api(`/api/expenses/detail?period=${period()}&limit=300`);
       const d = j.data || { items: [], count: 0, total: 0 };

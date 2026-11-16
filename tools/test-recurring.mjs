@@ -219,4 +219,14 @@ check('非法标注输入被拒', () => {
   assert.equal(tags.addTag(SET, { entity_type: 'recurring', entity_id: 1, tag: '离职', effective_from: '2026-13' }).code, 1);
 });
 
+check('单项历史：按月生成记录、金额与凭证号可追溯', () => {
+  const tpl = rec.listTemplates(SET).find((x) => x.name === '工资');
+  const h = rec.templateHistory(SET, tpl.id, { months: 12 });
+  assert.equal(h.code, 0, h.message);
+  assert.ok(h.data.runs.length >= 2, '应有多个月份的生成记录');
+  assert.ok(h.data.runs.every((r) => r.period && r.amount >= 0));
+  assert.ok(h.data.total >= 0);
+  assert.equal(rec.templateHistory(SET, 99999).code, 1);
+});
+
 console.log(`\n固定支出测试：${pass} PASS`);

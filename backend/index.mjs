@@ -863,6 +863,9 @@ async function handle(req, res) {
     return reply(res, ord.addShipment(setId, id, body, actor));
   }
   if (p === '/api/expenses/detail' && method === 'GET') return reply(res, ord.expenseDetail(setId, q));
+  if (p === '/api/ledger/timeline' && method === 'GET') return reply(res, ord.ledgerTimeline(setId, q));
+  m = p.match(/^\/api\/recurring\/(\d+)\/history$/);
+  if (m && method === 'GET') return reply(res, rec.templateHistory(setId, Number(m[1]), { months: Number(q.months) || 12 }));
 
   // ---------------- 固定支出（周期性凭证） ----------------
   // ---------------- 标注（离职 / 钱货两讫 / 已结清 等） ----------------

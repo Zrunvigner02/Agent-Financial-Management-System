@@ -334,3 +334,24 @@ export function markNotified(setId, period) {
   stateSet(stateKey(setId, period), now());
   return ok({ period });
 }
+
+/** 单项固定支出的历史：每月生成记录、金额变化、覆盖说明、关联凭证 */
+export function templateHistory(setId, id, { months = 12 } = {}) {
+  const tpl = listTemplates(setId).find((t) => t.id === Number(id));
+  if (!tpl) return fail('固定支出不存在');
+  const runs = all(`SELECT r.*, v.no, v.date, v.status AS voucher_status
+    FROM recurring_runs r LEFT JOIN vouchers v ON v.id = r.voucher_id
+    WHERE r.template_id = ? ORDER BY r.period DESC LIMIT ?`, Number(id), Math.min(48, Number(months) || 12));
+  const overrides = all('SELECT * FROM recurring_overrides WHERE template_id = ? ORDER BY period DESC LIMIT 24', Number(id))
+    .map((o) => ({ period: o.period, amount: amountOf(parseEntries(o.entries)), reason: o.reason }));
+  const total = money(runs.reduce((s2, r) => s2 + Number(r.amount || 0), 0));
+  return ok({
+    template: tpl,
+    runs: runs.map((r) => ({
+      period: r.period, amount: money(r.amount), source: r.source,
+      voucher_id: r.voucher_id, voucher_no: r.no, voucher_date: r.date,
+      voucher_status: r.voucher_status || '',
+    })),
+    overrides, total, count: runs.length,
+  });
+}

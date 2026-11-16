@@ -50,6 +50,15 @@
   .zd-fc-foot button{flex:1;border:1px solid #e3e7ef;background:#fff;border-radius:8px;padding:6px 0;font-size:12px;cursor:pointer;color:#3a4152}
   .zd-fc-foot button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
   .zd-fc-empty{padding:18px 14px;color:#8a90a2;font-size:12px;line-height:1.7}
+  .zd-fc-row{cursor:pointer}
+  .zd-fc-mask{position:fixed;inset:0;background:rgba(16,22,36,.3);z-index:9999}
+  .zd-fc-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:420px;max-width:92vw;max-height:78vh;background:#fff;border-radius:14px;z-index:10000;box-shadow:0 20px 60px rgba(16,22,36,.28);display:flex;flex-direction:column;overflow:hidden}
+  .zd-fc-modal-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #eef1f6;font-size:14px;font-weight:600}
+  .zd-fc-modal-body{overflow:auto;padding:6px 0}
+  .zd-fc-hrow{display:flex;justify-content:space-between;gap:8px;padding:8px 16px;font-size:12px;border-bottom:1px solid #f6f8fb}
+  .zd-fc-hrow small{color:#8a90a2}
+  .zd-fc-modal-foot{padding:10px 16px;border-top:1px solid #eef1f6;display:flex;gap:8px}
+  .zd-fc-modal-foot button{flex:1;border:1px solid #e3e7ef;background:#fff;border-radius:8px;padding:7px 0;font-size:12px;cursor:pointer;color:#3a4152}
   `;
 
   const style = document.createElement('style');
@@ -128,7 +137,7 @@
         const left = t.resigned_from ? `<span class="zd-fc-badge left">已离职${t.resigned_from ? ` ${t.resigned_from}` : ''}</span>` : '';
         const settled = t.tags && t.tags['钱货两讫'] ? '<span class="zd-fc-badge settle">钱货两讫</span>' : '';
         const adj = t.overridden ? '<em>本月已调</em>' : '';
-        return `<div class="zd-fc-row" title="${t.name}">
+        return `<div class="zd-fc-row" data-act="item" data-id="${t.id}" title="点开看明细">
           <span class="zd-fc-name">${t.person || t.name}${adj}</span>
           ${left}${settled}${statusBadge(t)}
           <span class="zd-fc-amt">${money(t.amount)}</span>
@@ -173,6 +182,49 @@
     } catch (e) { alert(e.message); }
   }
 
+  async function openHistory(id) {
+    const mask = document.createElement('div');
+    mask.className = 'zd-fc-mask';
+    const modal = document.createElement('div');
+    modal.className = 'zd-fc-modal';
+    modal.innerHTML = '<div class="zd-fc-modal-hd"><span>明细</span><span data-act="close">×</span></div><div class="zd-fc-modal-body">加载中…</div>';
+    document.body.appendChild(mask);
+    document.body.appendChild(modal);
+    const close = () => { mask.remove(); modal.remove(); };
+    mask.addEventListener('click', close);
+    modal.querySelector('[data-act="close"]').addEventListener('click', close);
+    try {
+      const j = await api(`/api/recurring/${id}/history?months=12`);
+      const d = j.data || {};
+      const t = d.template || {};
+      const runs = (d.runs || []).map((r) => `<div class="zd-fc-hrow">
+          <span>${r.period}<small>${r.source === 'manual' ? ' · 手工调整' : ''}</small></span>
+          <span>${money(r.amount)}<small>${r.voucher_no ? ` · ${r.word || '记'}-${r.voucher_no}` : ''}</small></span>
+        </div>`).join('');
+      const ovs = (d.overrides || []).map((o) => `<div class="zd-fc-hrow"><span>${o.period} 单独调整</span><span>${money(o.amount)}<small>${o.reason || ''}</small></span></div>`).join('');
+      modal.innerHTML = `<div class="zd-fc-modal-hd"><span>${t.person || t.name || '明细'}</span><span data-act="close" style="cursor:pointer;color:#98a0b0">×</span></div>
+        <div class="zd-fc-modal-body">
+          <div class="zd-fc-hrow"><span>类别</span><span>${t.category || '—'}</span></div>
+          <div class="zd-fc-hrow"><span>每月金额</span><span>${money(t.amount)}</span></div>
+          <div class="zd-fc-hrow"><span>入账日</span><span>每月 ${t.day || 1} 号</span></div>
+          <div class="zd-fc-hrow"><span>状态</span><span>${t.active ? '启用中' : '已停用'}${t.resigned_from ? ` · 已离职 ${t.resigned_from}` : ''}</span></div>
+          ${ovs ? `<div class="zd-fc-group" style="padding:10px 16px 4px">单独调整</div>${ovs}` : ''}
+          <div class="zd-fc-group" style="padding:10px 16px 4px">近 12 个月 · 合计 ${money(d.total || 0)}</div>
+          ${runs || '<div class="zd-fc-empty">还没有生成过凭证</div>'}
+        </div>
+        <div class="zd-fc-modal-foot"><button data-act="ask">让智能体改</button><button data-act="close">关闭</button></div>`;
+      modal.querySelectorAll('[data-act="close"]').forEach((el) => el.addEventListener('click', close));
+      const ask = modal.querySelector('[data-act="ask"]');
+      if (ask) ask.addEventListener('click', () => {
+        close();
+        const box = document.querySelector('textarea');
+        if (box) { box.focus(); box.value = `把「${t.person || t.name}」本月金额改成`; box.dispatchEvent(new Event('input', { bubbles: true })); }
+      });
+    } catch (e) {
+      modal.querySelector('.zd-fc-modal-body').textContent = e.message || '加载失败';
+    }
+  }
+
   function bind() {
     root.querySelectorAll('[data-act]').forEach((el) => {
       el.addEventListener('click', (ev) => {
@@ -182,6 +234,7 @@
         else if (act === 'close') { state.open = false; render(); }
         else if (act === 'refresh') load();
         else if (act === 'ack') ackNotice();
+        else if (act === 'item') { openHistory(el.getAttribute('data-id')); }
         else if (act === 'ask') {
           state.open = false; render();
           const box = document.querySelector('textarea');

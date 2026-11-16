@@ -314,3 +314,61 @@ export function expenseDetail(setId, { period = '', code = '', limit = 200 } = {
     })),
   });
 }
+
+/**
+ * 明细账时间线：把凭证分录与订单事件合并到一条时间轴，便于按订单号追溯。
+ * 返回 items: [{date, kind:'voucher'|'order', title, sub, amount, ...}]
+ */
+export function ledgerTimeline(setId, { period = '', q = '', limit = 200 } = {}) {
+  if (period && !PERIOD_RE.test(period)) return fail('期间格式应为 YYYY-MM');
+  const items = [];
+  const pv = [];
+  let sqlV = `SELECT v.id, v.date, v.word, v.no, e.summary, e.subject_code, e.subject_name, e.debit, e.credit
+    FROM voucher_entries e JOIN vouchers v ON v.id = e.voucher_id
+    WHERE v.set_id = ? AND v.status != 'void'`;
+  pv.push(setId);
+  if (period) { sqlV += ' AND v.period = ?'; pv.push(period); }
+  if (q) { sqlV += ' AND (e.summary LIKE ? OR e.subject_name LIKE ? OR v.no LIKE ?)'; pv.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  sqlV += ' ORDER BY v.date DESC, v.id DESC LIMIT ?';
+  pv.push(Math.min(500, Number(limit) || 200));
+  for (const r of all(sqlV, ...pv)) {
+    items.push({
+      date: r.date, kind: 'voucher', ref: `${r.word}-${r.no}`,
+      title: r.summary || r.subject_name,
+      sub: `${r.subject_code} ${r.subject_name}`,
+      amount: money(Number(r.debit || 0) - Number(r.credit || 0)),
+      debit: money(r.debit), credit: money(r.credit),
+      voucher_id: r.id,
+    });
+  }
+
+  const po = [];
+  let sqlO = `SELECT o.id, o.order_no, o.customer, o.status, o.amount, o.discount, o.order_date,
+      (SELECT carrier FROM order_shipments s WHERE s.order_id = o.id ORDER BY s.id DESC LIMIT 1) AS carrier,
+      (SELECT tracking_no FROM order_shipments s WHERE s.order_id = o.id ORDER BY s.id DESC LIMIT 1) AS tracking_no,
+      (SELECT status FROM order_shipments s WHERE s.order_id = o.id ORDER BY s.id DESC LIMIT 1) AS ship_status
+    FROM orders o WHERE o.set_id = ?`;
+  po.push(setId);
+  if (period) { sqlO += " AND substr(o.order_date,1,7) = ?"; po.push(period); }
+  if (q) { sqlO += ' AND (o.order_no LIKE ? OR o.customer LIKE ?)'; po.push(`%${q}%`, `%${q}%`); }
+  sqlO += ' ORDER BY o.order_date DESC, o.id DESC LIMIT ?';
+  po.push(Math.min(500, Number(limit) || 200));
+  for (const o of all(sqlO, ...po)) {
+    const last = get('SELECT type, note, effective_at FROM order_events WHERE order_id = ? ORDER BY id DESC LIMIT 1', o.id);
+    items.push({
+      date: o.order_date, kind: 'order', ref: o.order_no,
+      title: `${o.customer || '散客'} · ${STATUS_LABEL[o.status] || o.status}`,
+      sub: [o.ship_status ? `物流 ${SHIP_LABEL[o.ship_status] || o.ship_status}` : '', last?.note || ''].filter(Boolean).join(' · '),
+      amount: money(Number(o.amount || 0) - Number(o.discount || 0)),
+      order_id: o.id, status: o.status,
+    });
+  }
+
+  items.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  return ok({
+    period, count: items.length,
+    vouchers: items.filter((x) => x.kind === 'voucher').length,
+    orders: items.filter((x) => x.kind === 'order').length,
+    items: items.slice(0, Math.min(500, Number(limit) || 200)),
+  });
+}

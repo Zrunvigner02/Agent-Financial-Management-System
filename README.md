@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.6.0-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.1-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -279,6 +279,13 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.6.1 更新
+
+- **固定支出可点开看明细**：左侧面板每项可点击，弹出该员工/科目的每月金额、入账日、状态、单独调整记录与近 12 个月生成明细（含凭证号）
+- **订单并入明细账**：订单抽屉新增「明细账」页签，凭证分录与订单（建单/状态/物流）按日期合并展示，订单行带 🧾 标记并可点进详情
+- 接口：`GET /api/recurring/:id/history`、`GET /api/ledger/timeline`
+- 测试：订单 10 项、固定支出 18 项
+
 ## 🆕 1.6.0 更新
 
 - **订单全流程**：`orders` / `order_items` / `order_events` / `order_price_changes` / `order_shipments` 五张表；状态支持进行中、部分发货、已结清、退货中、已退货、已取消
@@ -413,10 +420,10 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 真实 Chrome UI 验证 | 38 / 38，零 JS 异常、零 4xx/5xx |
 | 三大报表单测 | 11 / 11（取数、引用、重分类、公式安全） |
 | 账号体系单测 | 11 / 11（注册策略、锁定、踢线、过期、删除确认、越权） |
-| 固定支出与标注单测 | 17 / 17（幂等生成、提醒去重、本月/下月/长期调整、离职、标注撤销） |
+| 固定支出与标注单测 | 18 / 18（幂等生成、提醒去重、本月/下月/长期调整、离职、标注撤销、单项历史） |
 | 附件留档单测 | 6 / 6（存储路径、内容去重、元数据、列表、清理） |
 | 文件能力单测 | 7 / 7（附件列表、格式自检、转换、OCR 分支） |
-| 订单流程单测 | 9 / 9（建单、状态流转、改价、退货、物流、汇总） |
+| 订单流程单测 | 10 / 10（建单、状态流转、改价、退货、物流、汇总、明细账时间线） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -431,6 +438,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.6.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.6.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

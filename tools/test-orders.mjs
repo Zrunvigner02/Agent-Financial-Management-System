@@ -107,4 +107,14 @@ check('支出明细：无凭证时返回空而不报错', () => {
   assert.equal(ord.expenseDetail(SET, { period: '2026-13' }).code, 1);
 });
 
+check('明细账时间线：订单与凭证合并、可按关键词过滤', () => {
+  const t = ord.ledgerTimeline(SET, { period: '2026-11' });
+  assert.equal(t.code, 0);
+  assert.ok(t.data.orders >= 2);
+  assert.ok(t.data.items.some((x) => x.kind === 'order' && x.ref));
+  const f = ord.ledgerTimeline(SET, { period: '2026-11', q: 'SO' });
+  assert.ok(f.data.items.every((x) => x.kind === 'order'));
+  assert.equal(ord.ledgerTimeline(SET, { period: '2026-13' }).code, 1);
+});
+
 console.log(`\n订单测试：${pass} PASS`);

@@ -4,6 +4,7 @@ import * as exp from './export.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as recurring from './recurring.mjs';
 import * as tags from './tags.mjs';
+import * as fileops from './fileops.mjs';
 
 export const ok = (data = null, message = '') => ({ code: 0, data, message });
 export const fail = (message = '操作失败', code = 1) => ({ code, data: null, message });
@@ -1190,6 +1191,10 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'adjust_recurring': return adjustRecurring(sid, args, user);
     case 'recurring_reminder': return recurring.reminder(sid, args.period || currentPeriodLocal(), { mark: Boolean(args.mark), auto: args.auto !== false });
     case 'list_tags': return { code: 0, message: '', data: tags.listTags(sid, { entity_type: args.entity_type, entity_id: args.entity_id }) };
+    case 'list_attachments': return fileops.attachmentList(sid, args);
+    case 'ocr_file': return fileops.ocrFile(sid, args);
+    case 'convert_file': return fileops.convertFile(sid, args);
+    case 'file_formats': return fileops.supportedFormats();
     case 'save_tag': return tags.addTag(sid, args, user);
     case 'get_closing_status': return closingList(sid, args.period);
     case 'create_voucher': return createVoucher(sid, args, user);

@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.4.2-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.5.0-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -82,7 +82,8 @@
 | 🏷 **生命周期标注** | 员工离职、订单钱货两讫、款项结清等可打标注，历史月份留痕、后续自动停记 |
 | 📄 **三大报表** | 资产负债表 / 利润表 / 现金流量表，模板与公式可编辑、支持往来重分类 |
 | 📤 **导出中心** | 凭证 / 余额 / 明细 / 三大报表，CSV / XLSX / JSON / MD / HTML 五种格式互转下载 |
-| 🔁 **格式转换** | 兼容 Filee CLI 协议的本地零依赖实现，产出 PDF / DOCX / ODS / RTF / 图片等 |
+| 🔁 **格式转换** | 兼容 Filee 协议，零依赖产出 PDF / DOCX / ODS / RTF / 图片；智能体可一句话转换并回传下载链接 |
+| 🔍 **OCR** | 图片 / 扫描件文字识别，本地 tesseract 优先、视觉模型兜底，发票可读 |
 | 🔌 **MCP 对接** | `POST /mcp`（streamableHttp）+ stdio 兜底桥，可被 WorkBuddy 等客户端直接调用 |
 | 👤 **账号与权限** | 本机注册、管理员 / 普通用户自选、只读与记账分权、两阶段删除确认 |
 | 🛡 **数据严谨** | 17 项独立审计、多轮核验、稳定快照哈希、隔离测试与可回滚清理 |
@@ -277,6 +278,15 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.5.0 更新
+
+- **文件能力接入智能体**：新增 `list_attachments` / `ocr_file` / `convert_file` / `file_formats` 四个工具，共 34 个
+- **OCR**：图片与扫描件自动识别；`OCR_MODE=auto|local|api|off`，本地 tesseract 优先，未装则走视觉模型，都没有时给出可操作提示（`npm run ocr:doctor` 一键自检）
+- **格式转换**：智能体可把附件转成 pdf / docx / xlsx / csv / json / md / html / png 等并直接给下载链接，复用 Filee 兼容桥，无需装 .NET
+- **下载链接可用**：`/api/export/download` 支持查询参数 token，聊天里点开即下载
+- **接口**：`POST /api/agent/ocr`、`POST /api/agent/convert`
+- **测试**：`tools/test-fileops.mjs` 7 项（列表、能力自检、转换、非法格式、缺文件、OCR 分支）
+
 ## 🆕 1.4.2 更新
 
 - 新增「项目概览」章节：一句话定位、项目背景、技术栈、负责工作与主要成果，智能体部分展开写，前后端压缩
@@ -392,6 +402,7 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 | 账号体系单测 | 11 / 11（注册策略、锁定、踢线、过期、删除确认、越权） |
 | 固定支出与标注单测 | 17 / 17（幂等生成、提醒去重、本月/下月/长期调整、离职、标注撤销） |
 | 附件留档单测 | 6 / 6（存储路径、内容去重、元数据、列表、清理） |
+| 文件能力单测 | 7 / 7（附件列表、格式自检、转换、OCR 分支） |
 
 详见 [docs/VERIFICATION.md](docs/VERIFICATION.md)。
 
@@ -406,6 +417,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.4.2** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.5.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

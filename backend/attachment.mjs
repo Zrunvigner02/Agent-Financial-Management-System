@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { run, get, all, now } from './store.mjs';
 import { parseTable, unzipEntries, PARSE_EXTS } from './export.mjs';
+import * as ocr from './ocr.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /* 新布局：data/attachments/<账套>/<YYYY-MM>/，随 data 一起备份 */
@@ -242,11 +243,10 @@ function imageStrings(buf, ext) {
 }
 
 function tryOcr(filePath) {
-  const cmd = process.env.ZD_OCR_CMD || '';
-  if (!cmd) return null;
+  // 本地同步 OCR（tesseract）。视觉模型 OCR 是异步的，在路由层补，避免把解析链路改成异步。
   try {
-    const r = spawnSync(cmd, [filePath], { encoding: 'utf8', timeout: 30000, windowsHide: true, shell: false });
-    return r.status === 0 ? String(r.stdout || '').trim() : null;
+    const r = ocr.recognizeSyncLocal(filePath);
+    return r.ok ? r.text : null;
   } catch { return null; }
 }
 
@@ -257,7 +257,7 @@ function readImage(buf, ext, savedPath) {
   let text = meta || '';
   if (ocr) { text = `${meta ? meta + '\n\n' : ''}【OCR 识别】\n${ocr}`; }
   else {
-    notes.push('图片没有文字层：本机未配置 OCR（可设环境变量 ZD_OCR_CMD 指向 tesseract 等命令）。原件已保存到 ' + savedPath + '，WorkBuddy 可直接读取该路径用视觉能力识别并录入。');
+    notes.push(`图片没有文字层，本地未装 OCR 引擎（安装 tesseract，或在 .env 配 OCR_API_KEY 走视觉模型）。原件已保存到 ${savedPath}，可让智能体用「识别图片文字」再读一次。`);
   }
   return {
     text: text || `（图片 ${ext} 已接收，暂无文字内容）`,
@@ -350,14 +350,16 @@ export function readAttachment(input = {}) {
 
   const sessionId = String(input.session_id || '');
   const setId = Number(input.set_id || 85);
+  let newId = dup ? dup.id : null;
   if (!dup) {
     try {
-      run(`INSERT INTO agent_attachments
+      const ins = run(`INSERT INTO agent_attachments
            (session_id, set_id, name, ext, size, engine, path, rows, created_at, sha256, orig_name, rel_path, source, ref_count)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       sessionId, setId, name, ext, buf.length, r.engine, saved, rowCount, now(),
       sha, String(input.file_name || input.filename || input.name || name), relPath,
       String(input.source || 'chat'));
+      newId = Number(ins.lastInsertRowid) || null;
     } catch { /* 留档失败不影响解析结果 */ }
   }
 
@@ -368,7 +370,7 @@ export function readAttachment(input = {}) {
     text, table, is_invoice: isInvoice, message,
     name, ext, size: buf.length, engine: r.engine, rows: rowCount,
     columns: table ? table.columns.map((c) => c.label) : [],
-    saved_path: saved, saved_rel: relPath, sha256: sha, dedup: Boolean(dup), id: dup ? dup.id : null, notes, supported: SUPPORTED_EXTS,
+    saved_path: saved, saved_rel: relPath, sha256: sha, dedup: Boolean(dup), id: newId, notes, supported: SUPPORTED_EXTS,
   };
 }
 

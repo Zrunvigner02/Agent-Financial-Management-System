@@ -1,5 +1,16 @@
 # 更新日志
 
+## [1.5.0] — 2026-11-16
+
+### 新增
+
+- **文件工具**：`list_attachments` / `ocr_file` / `convert_file` / `file_formats`，智能体可列附件、识别图片文字、转换格式并回传可点击下载链接（共 34 个工具）。
+- **OCR**：`backend/ocr.mjs` 提供 auto/local/api/off 四档；本地 tesseract 优先，未装走 OpenAI 兼容视觉模型；上传图片时自动补 OCR；`npm run ocr:doctor` 自检并给安装指引。
+- **格式转换**：`backend/fileops.mjs` 把附件落到导出目录后复用 Filee 兼容桥，内置 5 种格式直接转，其余走桥；返回带 token 的下载链接。
+- **下载鉴权**：`/api/export/download` 支持 `?token=`，聊天里的链接点开即下载。
+- **接口**：`POST /api/agent/ocr`、`POST /api/agent/convert`。
+- **测试**：`tools/test-fileops.mjs` 7 项。
+
 ## [1.4.2] — 2026-11-16
 
 ### 文档

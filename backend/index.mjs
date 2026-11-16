@@ -10,6 +10,8 @@ import * as llm from './llm.mjs';
 import * as skills from './skills.mjs';
 import * as clarify from './clarify.mjs';
 import * as attachment from './attachment.mjs';
+import * as ocr from './ocr.mjs';
+import * as fileops from './fileops.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
@@ -26,6 +28,7 @@ const TOOL_NAMES = [
   'list_invoice_templates', 'create_invoice_voucher',
   'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
   'list_tags', 'save_tag',
+  'list_attachments', 'ocr_file', 'convert_file', 'file_formats',
   clarify.TOOL_NAME, clarify.ANALYZE_TOOL, 'read_attachment', 'data_audit',
 ];
 
@@ -44,9 +47,39 @@ const TOOL_DESCRIPTIONS = {
   recurring_reminder: '每月首条消息用：返回本月固定支出一句话摘要与调整选项，mark=true 时标记为已提醒',
   list_tags: '查询标注（离职 / 钱货两讫 / 已结清 / 作废 等），可按对象类型与编号过滤',
   save_tag: '给业务对象加标注：entity_type=recurring|invoice|voucher|asset，tag=离职/钱货两讫/已结清/作废，可带生效月份；只新增不删除',
+  list_attachments: '列出已上传的附件（可按月份过滤），返回文件名、大小、解析引擎、下载路径',
+  ocr_file: '识别图片/扫描件里的文字（发票、收据、截图）：优先本地 tesseract，未装则走视觉模型',
+  convert_file: '把附件或导出文件转成目标格式（pdf/docx/xlsx/csv/png 等），返回可直接打开的下载链接',
+  file_formats: '列出当前支持的解析格式、可转换目标格式与 OCR 引擎状态',
 };
 
 const TOOL_SCHEMAS = {
+  list_attachments: {
+    type: 'object',
+    properties: {
+      period: { type: 'string', description: '月份 YYYY-MM，可选' },
+      limit: { type: 'number', description: '返回条数，默认 20' },
+    },
+  },
+  ocr_file: {
+    type: 'object',
+    properties: {
+      attachment_id: { type: 'number', description: '附件编号（上传后返回的 id）' },
+      name: { type: 'string', description: '或用文件名指定' },
+      path: { type: 'string', description: '或直接给本地绝对路径' },
+    },
+  },
+  convert_file: {
+    type: 'object',
+    properties: {
+      attachment_id: { type: 'number', description: '附件编号' },
+      name: { type: 'string', description: '或附件文件名' },
+      file: { type: 'string', description: '或导出目录里的文件名' },
+      to: { type: 'string', description: '目标格式，如 pdf / docx / xlsx / csv / png' },
+    },
+    required: ['to'],
+  },
+  file_formats: { type: 'object', properties: {} },
   list_tags: {
     type: 'object',
     properties: {
@@ -258,7 +291,9 @@ async function handleMcp(res, body, authHeader) {
         result = await clarify.callTool({ ...args, set_id: record.default_set_id || DEFAULT_SET_ID },
           record.default_set_id || DEFAULT_SET_ID);
       } else {
-        result = biz.callTool(name, args, record.default_set_id || DEFAULT_SET_ID, 'workbuddy');
+        const mcpToken = bearer(authHeader);
+        result = await biz.callTool(name, name === 'convert_file' && mcpToken ? { ...args, token: mcpToken } : args,
+          record.default_set_id || DEFAULT_SET_ID, 'workbuddy');
       }
     } catch (e) {
       result = { code: 1, message: `工具执行失败：${e.message}` };
@@ -337,6 +372,7 @@ const READ_ONLY_TOOLS = new Set([
   'list_assets', 'list_asset_categories', 'list_subjects', 'list_auxiliaries',
   'list_invoices', 'get_closing_status', 'list_invoice_templates',
   'list_recurring', 'recurring_reminder', 'read_attachment', 'data_audit', 'list_tags',
+  'list_attachments', 'file_formats', 'ocr_file',
 ]);
 
 const toolDefs = () => TOOL_NAMES
@@ -374,9 +410,10 @@ function summarizeAction(tool, args) {
 }
 
 /** 执行一次工具；写操作只落草稿，返回结构化结果 */
-function runToolSafe(setId, name, args, user) {
+async function runToolSafe(setId, name, args, user, token = '') {
   try {
-    const r = biz.callTool(name, args, setId, user);
+    const payload = name === 'convert_file' && token ? { ...args, token } : args;
+    const r = await biz.callTool(name, payload, setId, user);
     return r || { code: 1, message: '工具无返回', data: null };
   } catch (e) {
     return { code: 1, message: `工具执行异常：${e.message}`, data: null };
@@ -397,7 +434,7 @@ async function agentChat(res, body, setId) {
   if (pending) {
     if (CONFIRM_RE.test(message.trim())) {
       const args = JSON.parse(pending.args || '{}');
-      const r = runToolSafe(setId, pending.tool, args, body.__actor || 'agent');
+      const r = await runToolSafe(setId, pending.tool, args, body.__actor || 'agent', bearer(req.headers.authorization));
       clearPending(pending.id, r.code === 0 ? 'done' : 'failed');
       const text = r.code === 0
         ? `已执行：${pending.summary}\n${r.message || ''}${r.data?.voucher_id ? `（凭证 #${r.data.voucher_id}，草稿）` : ''}`
@@ -545,7 +582,7 @@ async function agentChat(res, body, setId) {
         }
 
         sse(res, 'tool', { status: 'running', name: c.name, label: TOOL_DESCRIPTIONS[c.name] || c.name });
-        const result = runToolSafe(setId, c.name, args, body.__actor || 'agent');
+        const result = await runToolSafe(setId, c.name, args, body.__actor || 'agent', bearer(req.headers.authorization));
         messages.push({
           role: 'tool',
           tool_call_id: callId,
@@ -632,7 +669,9 @@ async function handle(req, res) {
     return reply(res, r);
   }
 
-  const user = biz.userFromToken(bearer(req.headers.authorization));
+  // 下载链接需要能在浏览器里直接点开：允许 /api/export/download 用查询参数带 token
+  const queryToken = (p === '/api/export/download' && typeof q.token === 'string') ? q.token : '';
+  const user = biz.userFromToken(bearer(req.headers.authorization) || queryToken);
   if (!user) return sendJson(res, 401, { code: 401, message: '未登录或登录已过期' });
 
   const setId = biz.parseSetId(req.headers['x-set-id']);
@@ -852,8 +891,26 @@ async function handle(req, res) {
   if (p === '/api/agent/upload' && method === 'POST') {
     try {
       const r = attachment.readAttachment({ ...body, session_id: body.session_id || '', set_id: setId, source: body.source || 'chat' });
+      // 图片本地 OCR 没拿到文字时，异步尝试视觉模型（OCR_MODE=api/auto）
+      const imgExt = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tif', 'tiff'];
+      if (imgExt.includes(String(r.ext).toLowerCase()) && r.engine !== 'image-ocr') {
+        const o = await ocr.recognize(r.saved_path, { ext: r.ext });
+        if (o.ok) {
+          r.text = `${r.text || ''}${r.text ? '\n\n' : ''}【OCR 识别】\n${o.text}`.slice(0, 12000);
+          r.engine = `image-ocr:${o.engine}`;
+          r.notes = (r.notes || []).filter((n) => !/未装 OCR|没有文字层/.test(n));
+          r.message = `已读取 ${r.name}：${r.engine}`;
+        }
+      }
       return reply(res, { code: 0, data: r, message: r.message });
     } catch (e) { return reply(res, biz.fail(e.message)); }
+  }
+  // 附件/文件的 OCR 与格式转换（与智能体工具同一套实现）
+  if (p === '/api/agent/ocr' && method === 'POST') {
+    return reply(res, await fileops.ocrFile(setId, { ...body, token: bearer(req.headers.authorization) }));
+  }
+  if (p === '/api/agent/convert' && method === 'POST') {
+    return reply(res, await fileops.convertFile(setId, { ...body, token: bearer(req.headers.authorization) }));
   }
   if (p === '/api/agent/attachments/formats' && method === 'GET') {
     return reply(res, biz.ok({ extensions: attachment.SUPPORTED_EXTS, max_mb: attachment.MAX_SIZE / 1024 / 1024 }));

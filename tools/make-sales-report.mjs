@@ -35,7 +35,7 @@ const rows = all(`SELECT d.*, c.name AS channel, c.platform,
 const BRAND = (channel) => {
   if (/歌剧/.test(channel)) return '歌剧';
   if (/PF|pf79/i.test(channel)) return 'PF';
-  if (/DH|drhauschka|德国世家|世家/i.test(channel)) return 'DH';
+  if (/DH|drhauschka|德国世家|世家/i.test(channel)) return '世家';
   return '其他';
 };
 
@@ -53,7 +53,7 @@ for (const r of rows) {
 }
 const brandHasData = (b) => [...monthAgg.keys()].some((k) => k.startsWith(`${b}|`));
 // 品牌顺序：固定三家在前，其它品牌（含名字里识别不出的）自动追加
-const KNOWN = ['歌剧', 'PF', 'DH'];
+const KNOWN = ['歌剧', 'PF', '世家'];
 const detected = [...new Set(rows.map((r) => BRAND(r.channel)))].filter((b) => b && b !== '其他');
 const BRANDS = [...KNOWN, ...detected.filter((b) => !KNOWN.includes(b)).sort()];
 
@@ -115,25 +115,39 @@ function sheetTotal() {
   const merges = [];
   out.push([T('总月对比表', 1)]);
   merges.push('A1:O1');
-  out.push(['', '', T('销售数量', 2), '', T('销售额', 2), '', T('退货', 2), '', T('退货金额', 2), '', '', '', '', '', '']);
+  // 第 2 行：分组表头，A2 放第一个品牌（样板即如此）
+  out.push([T(BRANDS[0] || '', 10), '', T('销售数量', 2), '', T('销售额', 2), '', T('退货', 2), '', T('退货金额', 2), '', '', '', '', '', '']);
   merges.push('C2:D2', 'E2:F2', 'G2:H2', 'I2:J2');
-  out.push([T('品牌', 2), '', T('销售数量', 2), T('增长比', 2), T('销售额', 2), T('增长比', 2),
+  // 第 3 行：子表头
+  out.push(['', '', T('销售数量', 2), T('增长比', 2), T('销售额', 2), T('增长比', 2),
     T('退货数量', 2), T('增长比', 2), T('退货金额', 2), T('增长比', 2),
     T('毛利润', 2), T('毛利率', 2), T('销售净利额', 2), T('销售净利率', 2), T('总结', 2)]);
 
   let r = 4;
-  for (const brand of BRANDS) {
+  for (const [bi, brand] of BRANDS.entries()) {
     const start = r;
-    out.push([T(brand, 10)]);
-    r += 1;
     for (let m = 1; m <= 12; m += 1) {
-      out.push(['', T(`${m}月`, 6), ...monthCells(brand, m), '']);
+      // 首月行写品牌名（纵向合并覆盖 12 个月 + 小计）
+      out.push([m === 1 && bi > 0 ? T(brand, 10) : '', T(`${m}月`, 6), ...monthCells(brand, m), '']);
       r += 1;
     }
     out.push(['', T('小计', 7), ...subtotalCells(brand), T('', 7)]);
     r += 1;
-    merges.push(`A${start}:A${r - 1}`);
+    // 第一个品牌的合并从 A2 开始（覆盖两行表头）
+    merges.push(bi === 0 ? `A2:A${r - 1}` : `A${start}:A${r - 1}`);
   }
+
+  // 末尾总计：跨品牌合计（整年）
+  const acc = { qty: 0, amount: 0, refundQty: 0, refund: 0, profit: 0 };
+  for (const brand of BRANDS) {
+    for (let m = 1; m <= 12; m += 1) {
+      const v = monthCells(brand, m);
+      acc.qty += val(v[0]); acc.amount += val(v[2]); acc.refundQty += val(v[4]);
+      acc.refund += val(v[6]); acc.profit += val(v[10]);
+    }
+  }
+  out.push([T('总计', 7), '', acc.qty ? SM(acc.qty) : '', '', SM(acc.amount), '', acc.refundQty ? SM(acc.refundQty) : '', '',
+    SM(acc.refund), '', '', '', SM(acc.profit), SP(acc.amount ? acc.profit / acc.amount : ''), T('', 7)]);
   return { rows: out, merges, widths: [9, 8, 9, 9, 13, 9, 9, 9, 12, 9, 10, 9, 12, 12, 10] };
 }
 
@@ -271,7 +285,7 @@ const sheets = [
   { name: '总月对比表', ...sheetTotal() },
   { name: '歌剧月对比表', ...sheetBrand('歌剧', '歌剧月对比表') },
   { name: 'PF月对比表', ...sheetBrand('PF', 'PF月对比表') },
-  { name: 'DH月对比表', ...sheetBrand('DH', 'DH月对比表') },
+  { name: '世家月对比表', ...sheetBrand('世家', '世家月对比表') },
   { name: '日汇总表', ...sheetDaily() },
 ];
 

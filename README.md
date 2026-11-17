@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.7.1-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.2-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -279,6 +279,13 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.7.2 更新（真实数据跑通）
+
+- **自研 .xls 读取器**：`tools/xls-read.mjs` 零依赖解析 OLE2 + BIFF8（SST/LABELSST/NUMBER/RK/MULRK/FORMULA），老报表不用另存
+- **三平台导入**：京东自营/POP、拼多多、天猫海外旗舰店、小红书，共 1311 行入库，口径 `source=platform`，与 `sales_dept`、`wdt` 三分
+- **锁死格式报表**：`tools/make-sales-report.mjs` 按样例结构输出「总月对比表 / 歌剧月对比表 / DH月对比表 / 日汇总表」，含金额、增长比、净利、费率，金额两位小数、比率百分比格式
+- 命令：`npm run sales:import`、`npm run sales:report`
+
 ## 🆕 1.7.1 更新（销售三件套）
 
 - **商品主数据**：`products` + `product_aliases`，SKU 以旺店通商家编码为准，销售部叫法走别名映射
@@ -469,6 +476,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.7.1** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.7.2** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

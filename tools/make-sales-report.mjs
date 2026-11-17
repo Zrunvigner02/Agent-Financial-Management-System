@@ -52,6 +52,10 @@ for (const r of rows) {
   monthAgg.set(k, a);
 }
 const brandHasData = (b) => [...monthAgg.keys()].some((k) => k.startsWith(`${b}|`));
+// 品牌顺序：固定三家在前，其它品牌（含名字里识别不出的）自动追加
+const KNOWN = ['歌剧', 'PF', 'DH'];
+const detected = [...new Set(rows.map((r) => BRAND(r.channel)))].filter((b) => b && b !== '其他');
+const BRANDS = [...KNOWN, ...detected.filter((b) => !KNOWN.includes(b)).sort()];
 
 const daysInMonth = new Date(Number(YEAR), MONTH, 0).getDate();
 const dayAgg = new Map();
@@ -78,7 +82,6 @@ const growth = (cur, prev) => (prev ? Math.round((cur / prev - 1) * 10000) / 100
 
 /** 某品牌某月的 12 个指标（C..N；O 总结留空） */
 function monthCells(brand, mo) {
-  if (mo > MONTH || !brandHasData(brand)) return Array(12).fill('');
   const a = monthAgg.get(`${brand}|${mo}`);
   const prev = monthAgg.get(`${brand}|${mo - 1}`);
   if (!a) return Array(12).fill('');
@@ -97,7 +100,7 @@ function monthCells(brand, mo) {
 function subtotalCells(brand, money = SM, pct = SP) {
   if (!brandHasData(brand)) return Array(12).fill('');
   const acc = { qty: 0, amount: 0, refundQty: 0, refund: 0, profit: 0 };
-  for (let m = 1; m <= MONTH; m += 1) {
+  for (let m = 1; m <= 12; m += 1) {
     const v = monthCells(brand, m);
     acc.qty += val(v[0]); acc.amount += val(v[2]); acc.refundQty += val(v[4]);
     acc.refund += val(v[6]); acc.profit += val(v[10]);
@@ -107,8 +110,6 @@ function subtotalCells(brand, money = SM, pct = SP) {
 }
 
 /* ---------- 总月对比表 ---------- */
-const BRAND_ORDER = ['歌剧', 'PF', 'DH'];
-
 function sheetTotal() {
   const out = [];
   const merges = [];
@@ -116,15 +117,16 @@ function sheetTotal() {
   merges.push('A1:O1');
   out.push(['', '', T('销售数量', 2), '', T('销售额', 2), '', T('退货', 2), '', T('退货金额', 2), '', '', '', '', '', '']);
   merges.push('C2:D2', 'E2:F2', 'G2:H2', 'I2:J2');
-  out.push(['', '', T('销售数量', 2), T('增长比', 2), T('销售额', 2), T('增长比', 2),
+  out.push([T('品牌', 2), '', T('销售数量', 2), T('增长比', 2), T('销售额', 2), T('增长比', 2),
     T('退货数量', 2), T('增长比', 2), T('退货金额', 2), T('增长比', 2),
     T('毛利润', 2), T('毛利率', 2), T('销售净利额', 2), T('销售净利率', 2), T('总结', 2)]);
 
   let r = 4;
-  for (const brand of BRAND_ORDER) {
+  for (const brand of BRANDS) {
     const start = r;
     out.push([T(brand, 3)]);
-    for (let m = 1; m <= MONTH; m += 1) {
+    r += 1;
+    for (let m = 1; m <= 12; m += 1) {
       out.push(['', T(`${m}月`, 6), ...monthCells(brand, m), '']);
       r += 1;
     }

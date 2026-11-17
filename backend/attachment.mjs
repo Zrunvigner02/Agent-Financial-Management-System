@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { run, get, all, now } from './store.mjs';
 import { parseTable, unzipEntries, PARSE_EXTS } from './export.mjs';
 import * as ocr from './ocr.mjs';
+import { xlsToTable } from './xls.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /* 新布局：data/attachments/<账套>/<YYYY-MM>/，随 data 一起备份 */
@@ -208,6 +209,19 @@ function readRtf(buf) {
 
 /** 老式 .xls（OLE2/BIFF）：零依赖提取 UTF-16LE / ASCII 字符串，尽量还原单元格文本 */
 function readXls(buf) {
+  // 与导入管线共用同一个 BIFF8 解析器，避免「上传的 xls 只能读文字、导入却能读表」两套行为
+  try {
+    const { table, sheets, sheet } = xlsToTable(buf);
+    if (table && table.rows.length) {
+      const head = table.columns.map((c) => c.label).join(' | ');
+      const body = table.rows.slice(0, 200).map((r) => table.columns.map((c) => r[c.key]).join(' | ')).join('\n');
+      return {
+        text: `【工作表：${sheet || sheets[0] || ''}】\n${head}\n${body}`,
+        table, engine: 'biff8',
+        notes: sheets.length > 1 ? [`该 .xls 共 ${sheets.length} 个工作表：${sheets.join('、')}（已解析第一个）`] : [],
+      };
+    }
+  } catch { /* 退回字符串提取 */ }
   const parts = [];
   let cur = '';
   for (let i = 0; i + 1 < buf.length; i += 2) {
@@ -222,46 +236,7 @@ function readXls(buf) {
   const text = [...new Set([...parts, ...ascii])].slice(0, 400).join('\n');
   return {
     text: text || '（.xls 中未提取到文字）', table: null, engine: 'biff-strings',
-    notes: ['老式 .xls 仅能提取文字片段；如需完整表格，请另存为 .xlsx 后重新上传。'],
-  };
-}
-
-function imageStrings(buf, ext) {
-  const found = [];
-  const latin = buf.toString('latin1');
-  if (ext === 'png') {
-    for (const m of latin.matchAll(/(tEXt|iTXt|zTXt)([\s\S]{0,300}?)(?=IEND|IDAT|tEXt|iTXt|zTXt)/g)) {
-      const s = m[2].replace(/[^\x20-\x7E\u4e00-\u9fa5]/g, ' ').trim();
-      if (s.length > 2) found.push(s.slice(0, 120));
-    }
-  }
-  for (const m of latin.matchAll(/[\x20-\x7E]{8,}/g)) {
-    const s = m[0];
-    if (/(comment|description|author|title|ocr|发票|金额|日期)/i.test(s)) found.push(s.slice(0, 160));
-  }
-  return [...new Set(found)].slice(0, 20).join('\n');
-}
-
-function tryOcr(filePath) {
-  // 本地同步 OCR（tesseract）。视觉模型 OCR 是异步的，在路由层补，避免把解析链路改成异步。
-  try {
-    const r = ocr.recognizeSyncLocal(filePath);
-    return r.ok ? r.text : null;
-  } catch { return null; }
-}
-
-function readImage(buf, ext, savedPath) {
-  const meta = imageStrings(buf, ext);
-  const ocr = tryOcr(savedPath);
-  const notes = [];
-  let text = meta || '';
-  if (ocr) { text = `${meta ? meta + '\n\n' : ''}【OCR 识别】\n${ocr}`; }
-  else {
-    notes.push(`图片没有文字层，本地未装 OCR 引擎（安装 tesseract，或在 .env 配 OCR_API_KEY 走视觉模型）。原件已保存到 ${savedPath}，可让智能体用「识别图片文字」再读一次。`);
-  }
-  return {
-    text: text || `（图片 ${ext} 已接收，暂无文字内容）`,
-    table: null, engine: ocr ? 'image-ocr' : 'image-meta', notes,
+    notes: ['老式 .xls 解析失败，仅提取文字片段；建议另存为 .xlsx 后重试。'],
   };
 }
 

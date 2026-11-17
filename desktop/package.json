@@ -1,6 +1,6 @@
 {
   "name": "jinli-finance-desktop",
-  "version": "1.7.6",
+  "version": "1.8.0",
   "private": true,
   "description": "妆点管账 · 本地离线版桌面壳",
   "main": "main.js",

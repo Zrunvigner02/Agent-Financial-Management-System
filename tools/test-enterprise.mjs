@@ -98,4 +98,38 @@ check('意图路由：销售与知识库类提问命中对应组', () => {
   assert.ok(k.names.has('search_docs'));
 });
 
+check('商品主数据：SKU + 分组 + 成本 + 别名', () => {
+  assert.equal(ent.saveProduct(SET, { sku: 'M001', name: '歌剧面膜', group_name: '主推品', unit_cost: 30, alias: '歌剧' }).code, 0);
+  assert.equal(ent.saveProduct(SET, { sku: '', name: 'x' }).code, 1);
+  const list = ent.listProducts(SET, { group_name: '主推品' });
+  assert.equal(list.data.count, 1);
+  assert.equal(list.data.items[0].sku, 'M001');
+});
+
+check('导入按别名归到 SKU，并自动算毛利与净利', () => {
+  const r = ent.importSales(SET, { rows: [{
+    date: '2026-11-16', product: '歌剧', qty: 10, amount: 3000, return_qty: 1, return_amount: 300, fee: 150,
+  }] });
+  assert.equal(r.code, 0);
+  const row = ent.listSales(SET, { from: '2026-11-16', to: '2026-11-16' }).data.items[0];
+  assert.equal(row.sku, 'M001');
+  assert.equal(row.group_name, '主推品');
+  assert.equal(row.cost, 300);            // 10 × 30
+  assert.equal(row.gross_profit, 2400);   // 3000 - 300 - 300
+  assert.equal(row.net_profit, 2250);     // 2400 - 150
+});
+
+check('双口径对比：按商品汇总销售部与旺店通差额', () => {
+  ent.importSales(SET, { source: 'wdt', rows: [{
+    date: '2026-11-16', product: '歌剧面膜', qty: 9, amount: 2900, return_amount: 0, cost: 270,
+  }] });
+  const c = ent.salesCompare(SET, { from: '2026-11-16', to: '2026-11-16' });
+  assert.equal(c.code, 0);
+  assert.equal(c.data.total.sales_dept, 3000);
+  assert.equal(c.data.total.wdt, 2900);
+  assert.equal(c.data.total.diff, 100);
+  const item = c.data.items.find((x) => x.key === 'M001');
+  assert.equal(item.diff_rate, 3.4);
+});
+
 console.log(`\n企业助手骨架测试：${pass} PASS`);

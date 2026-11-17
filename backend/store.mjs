@@ -520,6 +520,29 @@ CREATE TABLE IF NOT EXISTS import_templates (
   created_at TEXT NOT NULL
 );
 
+
+/* 商品主数据（SKU 以旺店通商家编码为准，销售部叫法走别名表） */
+CREATE TABLE IF NOT EXISTS products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  sku TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  group_name TEXT NOT NULL DEFAULT '',
+  spec TEXT NOT NULL DEFAULT '',
+  unit_cost REAL NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(set_id, sku)
+);
+CREATE TABLE IF NOT EXISTS product_aliases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  alias TEXT NOT NULL,
+  sku TEXT NOT NULL,
+  UNIQUE(set_id, alias)
+);
+
 CREATE TABLE IF NOT EXISTS app_state (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL DEFAULT '',
@@ -632,6 +655,17 @@ function initialize() {
       : path.join(LOCAL_DIR, 'local-admin.txt');
     fs.writeFileSync(adminFile, `username=admin\npassword=${password}\n`);
     console.log(`[store] created local admin (password in ${path.relative(ROOT, adminFile)})`);
+  }
+
+  // 销售日数据补列：费用、毛利、净利、商品分组
+  const sdCols = db.prepare('PRAGMA table_info(sales_daily)').all().map((c) => c.name);
+  for (const [col, ddl] of [
+    ['fee', 'ALTER TABLE sales_daily ADD COLUMN fee REAL DEFAULT 0'],
+    ['gross_profit', 'ALTER TABLE sales_daily ADD COLUMN gross_profit REAL DEFAULT 0'],
+    ['net_profit', 'ALTER TABLE sales_daily ADD COLUMN net_profit REAL DEFAULT 0'],
+    ['group_name', "ALTER TABLE sales_daily ADD COLUMN group_name TEXT DEFAULT ''"],
+  ]) {
+    if (sdCols.length && !sdCols.includes(col)) db.exec(ddl);
   }
 
   // 附件元数据迁移（表已建，安全补列）

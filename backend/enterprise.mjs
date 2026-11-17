@@ -66,7 +66,9 @@ export function listSales(setId, { from = '', to = '', source = '', product = ''
     items: rows.map((r) => ({
       id: r.id, date: r.date, product: r.product, sku: r.sku,
       qty: r.qty, amount: money(r.amount), return_qty: r.return_qty,
-      return_amount: money(r.return_amount), cost: money(r.cost), source: r.source,
+      return_amount: money(r.return_amount), cost: money(r.cost),
+      fee: money(r.fee), gross_profit: money(r.gross_profit), net_profit: money(r.net_profit),
+      group_name: r.group_name || '', source: r.source,
     })),
   });
 }
@@ -84,11 +86,20 @@ export function importSales(setId, { rows = [], source = 'sales_dept', date = ''
     const d = String(r.date || date || '').slice(0, 10);
     if (!DATE_RE.test(d)) { errors.push(`第 ${i + 1} 行日期不合法`); continue; }
     if (!r.product && !r.sku) { errors.push(`第 ${i + 1} 行缺少商品名或 SKU`); continue; }
-    run(`INSERT INTO sales_daily (set_id, channel_id, date, sku, product, qty, amount, return_qty, return_amount, cost, source, batch_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-    setId, Number(r.channel_id || 0), d, String(r.sku || ''), String(r.product || ''),
-    Number(r.qty || 0), money(r.amount), Number(r.return_qty || 0), money(r.return_amount),
-    money(r.cost), src, now());
+    const prod = resolveProduct(setId, { sku: r.sku, product: r.product });
+    const qty = Number(r.qty || 0);
+    const amount = money(r.amount);
+    const returnAmount = money(r.return_amount);
+    const cost = money(r.cost != null ? r.cost : (prod ? Number(prod.unit_cost || 0) * qty : 0));
+    const fee = money(r.fee != null ? r.fee : 0);
+    const gross = money(amount - returnAmount - cost);
+    const net = money(gross - fee);
+    run(`INSERT INTO sales_daily (set_id, channel_id, date, sku, product, group_name, qty, amount, return_qty, return_amount,
+        cost, fee, gross_profit, net_profit, source, batch_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+    setId, Number(r.channel_id || 0), d, String(prod?.sku || r.sku || ''), String(prod?.name || r.product || ''),
+    String(prod?.group_name || ''), qty, amount, Number(r.return_qty || 0), returnAmount,
+    cost, fee, gross, net, src, now());
     inserted += 1;
   }
   return inserted
@@ -214,4 +225,101 @@ export function listDocs(setId, { limit = 50 } = {}) {
   const rows = all('SELECT id, title, category, dept, effective_from, updated_at FROM docs WHERE set_id = ? ORDER BY updated_at DESC LIMIT ?',
     setId, Math.min(200, Number(limit) || 50));
   return ok({ count: rows.length, items: rows });
+}
+
+/* ---------------- 商品主数据 + 别名（第 3 项） ---------------- */
+
+export function saveProduct(setId, data = {}) {
+  const sku = String(data.sku || '').trim();
+  const name = String(data.name || '').trim();
+  if (!sku) return fail('请给出 SKU（建议用旺店通商家编码）');
+  if (!name) return fail('请给出商品名称');
+  const exist = get('SELECT * FROM products WHERE set_id = ? AND sku = ?', setId, sku);
+  const t = now();
+  if (exist) {
+    run(`UPDATE products SET name=?, group_name=?, spec=?, unit_cost=?, active=?, updated_at=? WHERE id=?`,
+      name, String(data.group_name ?? exist.group_name), String(data.spec ?? exist.spec),
+      money(data.unit_cost ?? exist.unit_cost), data.active === false ? 0 : 1, t, exist.id);
+    if (data.alias) addAlias(setId, data.alias, sku);
+    return ok({ id: exist.id, sku }, `已更新商品 ${sku}`);
+  }
+  const info = run(`INSERT INTO products (set_id, sku, name, group_name, spec, unit_cost, active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, setId, sku, name, String(data.group_name || ''),
+  String(data.spec || ''), money(data.unit_cost), data.active === false ? 0 : 1, t, t);
+  if (data.alias) addAlias(setId, data.alias, sku);
+  return ok({ id: Number(info.lastInsertRowid), sku }, `已新增商品 ${name}（${sku}）`);
+}
+
+export function addAlias(setId, alias, sku) {
+  const a = String(alias || '').trim();
+  const k = String(sku || '').trim();
+  if (!a || !k) return fail('别名与 SKU 都要有');
+  run(`INSERT INTO product_aliases (set_id, alias, sku) VALUES (?, ?, ?)
+       ON CONFLICT(set_id, alias) DO UPDATE SET sku = excluded.sku`, setId, a, k);
+  return ok({ alias: a, sku: k }, `别名「${a}」→ ${k}`);
+}
+
+export function listProducts(setId, { group_name = '', active = '', limit = 200 } = {}) {
+  const where = ['set_id = ?'];
+  const params = [setId];
+  if (group_name) { where.push('group_name = ?'); params.push(group_name); }
+  if (active !== '') { where.push('active = ?'); params.push(Number(active) ? 1 : 0); }
+  const rows = all(`SELECT * FROM products WHERE ${where.join(' AND ')} ORDER BY group_name, sku LIMIT ?`,
+    ...params, Math.min(1000, Number(limit) || 200));
+  return ok({
+    count: rows.length,
+    items: rows.map((r) => ({
+      id: r.id, sku: r.sku, name: r.name, group_name: r.group_name,
+      spec: r.spec, unit_cost: money(r.unit_cost), active: Boolean(r.active),
+    })),
+  });
+}
+
+/** 商品名/别名 → SKU + 分组 + 单位成本 */
+function resolveProduct(setId, { sku = '', product = '' } = {}) {
+  const k = String(sku || '').trim();
+  const name = String(product || '').trim();
+  let row = k ? get('SELECT * FROM products WHERE set_id = ? AND sku = ?', setId, k) : null;
+  if (!row && name) {
+    row = get('SELECT * FROM products WHERE set_id = ? AND name = ?', setId, name);
+    if (!row) {
+      const alias = get('SELECT sku FROM product_aliases WHERE set_id = ? AND alias = ?', setId, name);
+      if (alias) row = get('SELECT * FROM products WHERE set_id = ? AND sku = ?', setId, alias.sku);
+    }
+  }
+  return row || null;
+}
+
+/* ---------------- 双口径对比（第 2 项） ---------------- */
+
+export function salesCompare(setId, { from = '', to = '', level = 'product' } = {}) {
+  const where = ['set_id = ?'];
+  const params = [setId];
+  if (from) { where.push('date >= ?'); params.push(from); }
+  if (to) { where.push('date <= ?'); params.push(to); }
+  const rows = all(`SELECT * FROM sales_daily WHERE ${where.join(' AND ')}`, ...params);
+  const keyOf = (r) => (level === 'date' ? r.date : level === 'channel' ? String(r.channel_id) : (r.sku || r.product || '未归类'));
+  const bucket = new Map();
+  for (const r of rows) {
+    const k = keyOf(r);
+    if (!bucket.has(k)) bucket.set(k, { key: k, label: k, sales_dept: 0, wdt: 0, qty_dept: 0, qty_wdt: 0 });
+    const b = bucket.get(k);
+    if (r.source === 'wdt') { b.wdt += Number(r.amount || 0); b.qty_wdt += Number(r.qty || 0); }
+    else { b.sales_dept += Number(r.amount || 0); b.qty_dept += Number(r.qty || 0); }
+  }
+  const items = [...bucket.values()].map((b) => {
+    const diff = money(b.sales_dept - b.wdt);
+    const base = b.wdt || b.sales_dept;
+    return {
+      ...b, sales_dept: money(b.sales_dept), wdt: money(b.wdt),
+      diff, diff_rate: base ? Number(((diff / base) * 100).toFixed(1)) : 0,
+    };
+  }).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+  const totalDept = money(items.reduce((s2, x) => s2 + x.sales_dept, 0));
+  const totalWdt = money(items.reduce((s2, x) => s2 + x.wdt, 0));
+  return ok({
+    from, to, level, total: { sales_dept: totalDept, wdt: totalWdt, diff: money(totalDept - totalWdt) },
+    count: items.length, items,
+    note: items.length ? '' : '所选区间没有数据，先导入销售日数据',
+  });
 }

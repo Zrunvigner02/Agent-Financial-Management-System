@@ -1218,7 +1218,10 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'expense_detail': return orders.expenseDetail(sid, args);
     case 'list_channels': return ent.listChannels(sid, args);
     case 'save_channel': return ent.saveChannel(sid, args);
+    case 'list_products': return ent.listProducts(sid, args);
+    case 'save_product': return ent.saveProduct(sid, args);
     case 'list_sales': return ent.listSales(sid, args);
+    case 'sales_compare': return ent.salesCompare(sid, args);
     case 'import_sales': return ent.importSales(sid, args);
     case 'list_ops': return ent.listOpsSpend(sid, args);
     case 'list_distribution': return ent.listDistribution(sid, args);

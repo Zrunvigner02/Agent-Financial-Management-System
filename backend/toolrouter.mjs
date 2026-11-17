@@ -16,7 +16,7 @@ export const TOOL_GROUPS = {
   file: ['list_attachments', 'ocr_file', 'convert_file', 'file_formats', 'read_attachment'],
   tag: ['list_tags', 'save_tag'],
   account: ['list_sets', 'list_assets', 'list_asset_categories', 'list_invoices', 'create_invoice_voucher'],
-  sales: ['list_channels', 'save_channel', 'list_sales', 'import_sales', 'list_ops', 'list_distribution'],
+  sales: ['list_channels', 'save_channel', 'list_products', 'save_product', 'list_sales', 'import_sales', 'sales_compare', 'list_ops', 'list_distribution'],
   kb: ['add_doc', 'search_docs', 'list_docs', 'add_work_report', 'list_work_reports'],
 };
 
@@ -52,7 +52,7 @@ export const INTENT_RULES = [
   ['voucher', [/凭证|记账|分录|借贷|科目|账簿|明细账|结账|期初|摊销|计提/,
     /记一笔|记个账|帮我记|录一笔|做账|入账/]],
   ['account', [/账号|权限|用户|密码|账套|角色|管理员|普通用户|开个号|注册/]],
-  ['sales', [/销售数据|销量|日销|平台数据|运营数据|花费|投流|分销|店铺|渠道|旺店通|导入数据/]],
+  ['sales', [/销售数据|销量|日销|平台数据|运营数据|花费|投流|分销|店铺|渠道|旺店通|导入数据|商品|SKU|sku|对账|差异|口径/]],
   ['kb', [/制度|规定|流程|SOP|合同|文档|资料|知识库|查一下.*(制度|流程)|汇报|周报|日报|工作总结|员工/]],
 ];
 

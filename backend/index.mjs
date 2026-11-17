@@ -32,7 +32,8 @@ const TOOL_NAMES = [
   'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
   'list_tags', 'save_tag',
   'list_attachments', 'ocr_file', 'convert_file', 'file_formats',
-  'list_channels', 'save_channel', 'list_sales', 'import_sales', 'list_ops', 'list_distribution',
+  'list_channels', 'save_channel', 'list_products', 'save_product',
+  'list_sales', 'import_sales', 'sales_compare', 'list_ops', 'list_distribution',
   'add_work_report', 'list_work_reports', 'add_doc', 'search_docs', 'list_docs',
   'create_order', 'update_order_status', 'change_order_price', 'return_order_items',
   'add_shipment', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
@@ -60,7 +61,10 @@ const TOOL_DESCRIPTIONS = {
   file_formats: '可用格式',
   list_channels: '查渠道',
   save_channel: '建/改渠道',
+  list_products: '查商品主数据',
+  save_product: '建/改商品',
   list_sales: '查销售日数据',
+  sales_compare: '双口径对比',
   import_sales: '导入销售数据',
   list_ops: '查运营花费',
   list_distribution: '查分销业绩',
@@ -81,6 +85,26 @@ const TOOL_DESCRIPTIONS = {
 };
 
 const TOOL_SCHEMAS = {
+  list_products: {
+    type: 'object',
+    properties: { group_name: { type: 'string' }, active: { type: 'string' }, limit: { type: 'number' } },
+  },
+  save_product: {
+    type: 'object',
+    properties: {
+      sku: { type: 'string', description: '建议用旺店通商家编码' },
+      name: { type: 'string' }, group_name: { type: 'string', description: '如 主推品/三色/基础色/一号色' },
+      spec: { type: 'string' }, unit_cost: { type: 'number' }, alias: { type: 'string', description: '销售部叫法' },
+    },
+    required: ['sku', 'name'],
+  },
+  sales_compare: {
+    type: 'object',
+    properties: {
+      from: { type: 'string' }, to: { type: 'string' },
+      level: { type: 'string', description: 'product|date|channel' },
+    },
+  },
   list_channels: { type: 'object', properties: { source: { type: 'string', description: 'sales_dept|wdt' } } },
   save_channel: {
     type: 'object',
@@ -512,7 +536,8 @@ const READ_ONLY_TOOLS = new Set([
   'list_invoices', 'get_closing_status', 'list_invoice_templates',
   'list_recurring', 'recurring_reminder', 'read_attachment', 'data_audit', 'list_tags',
   'list_attachments', 'file_formats', 'ocr_file', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
-  'list_channels', 'list_sales', 'list_ops', 'list_distribution', 'list_work_reports', 'list_docs', 'search_docs',
+  'list_channels', 'list_products', 'list_sales', 'sales_compare', 'list_ops', 'list_distribution',
+  'list_work_reports', 'list_docs', 'search_docs',
 ]);
 
 const toolDefs = (allowed = null) => TOOL_NAMES
@@ -963,6 +988,9 @@ async function handle(req, res) {
   // ---------------- 企业助手扩展（销售/运营/分销/汇报/文档） ----------------
   if (p === '/api/enterprise/channels' && method === 'GET') return reply(res, ent.listChannels(setId, q));
   if (p === '/api/enterprise/channels' && method === 'POST') return reply(res, ent.saveChannel(setId, body));
+  if (p === '/api/enterprise/products' && method === 'GET') return reply(res, ent.listProducts(setId, q));
+  if (p === '/api/enterprise/products' && method === 'POST') return reply(res, ent.saveProduct(setId, body));
+  if (p === '/api/enterprise/sales/compare' && method === 'GET') return reply(res, ent.salesCompare(setId, q));
   if (p === '/api/enterprise/sales' && method === 'GET') return reply(res, ent.listSales(setId, q));
   if (p === '/api/enterprise/sales/import' && method === 'POST') return reply(res, ent.importSales(setId, body));
   if (p === '/api/enterprise/ops' && method === 'GET') return reply(res, ent.listOpsSpend(setId, q));

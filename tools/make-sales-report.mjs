@@ -29,7 +29,13 @@ const rows = all(`SELECT d.*, c.name AS channel, c.platform,
   FROM sales_daily d JOIN sales_channels c ON c.id = d.channel_id
   WHERE d.set_id = ? AND d.source = 'platform'`, SET);
 
-const brandOf = (channel) => (channel.startsWith('歌剧') ? '歌剧' : channel.startsWith('DH') || /drhauschka|德国世家/.test(channel) ? 'DH' : '其他');
+// 三个品牌：歌剧魅影=歌剧，drhauschka/德国世家/ DH =DH，PF79=PF
+const brandOf = (channel) => {
+  if (/歌剧/.test(channel)) return '歌剧';
+  if (/PF|pf79/i.test(channel)) return 'PF';
+  if (/DH|drhauschka|德国世家|世家/i.test(channel)) return 'DH';
+  return '其他';
+};
 
 /* 月度汇总：品牌 × 月 */
 const monthAgg = new Map();
@@ -67,7 +73,10 @@ const growth = (cur, prev) => (prev ? pct(cur / prev - 1) : '');
 const M = (v) => ({ n: r2(v), s: 1 });
 const P = (v) => (v === '' || !Number.isFinite(Number(v)) ? '' : { n: Number(v), s: 2 });
 
+const brandHasData = (brand) => [...monthAgg.keys()].some((k) => k.startsWith(`${brand}|`));
+
 function monthRow(brand, mo) {
+  if (mo > MONTH || !brandHasData(brand)) return Array(13).fill('');
   const a = monthAgg.get(`${brand}|${mo}`) || { qty: 0, amount: 0, refundQty: 0, refund: 0, fee: 0 };
   const prev = monthAgg.get(`${brand}|${mo - 1}`) || { qty: 0, amount: 0, refundQty: 0, refund: 0, fee: 0 };
   const net = a.amount - a.refund;
@@ -84,15 +93,17 @@ function monthRow(brand, mo) {
   ];
 }
 
+const val = (x) => (typeof x === 'object' && x ? Number(x.n || 0) : Number(x || 0));
+
 function sumRows(list) {
   const acc = { qty: 0, amount: 0, refundQty: 0, refund: 0, gross: 0, profit: 0 };
   for (const v of list) {
-    acc.qty += Number(v[0] || 0);
-    acc.amount += Number(v[2] || 0);
-    acc.refundQty += Number(v[4] || 0);
-    acc.refund += Number(v[6] || 0);
-    acc.gross += Number(v[8] || 0);
-    acc.profit += Number(v[10] || 0);
+    acc.qty += val(v[0]);
+    acc.amount += val(v[2]);
+    acc.refundQty += val(v[4]);
+    acc.refund += val(v[6]);
+    acc.gross += val(v[8]);
+    acc.profit += val(v[10]);
   }
   return [acc.qty || '', '', M(acc.amount), '', acc.refundQty || '', '',
     M(acc.refund), '', '', '',
@@ -106,7 +117,7 @@ const HEAD2 = ['', '', '销售数量', '增长比', '销售额', '增长比', '�
 
 function sheetTotal() {
   const data = [['总月对比表'], [], HEAD1, HEAD2];
-  for (const [brand, label] of [['歌剧', '歌剧'], ['DH', 'DH']]) {
+  for (const [brand, label] of [['歌剧', '歌剧'], ['DH', 'DH'], ['PF', 'PF']]) {
     data.push([label, ...Array(13).fill('')]);
     const months = [];
     for (let m = 1; m <= 12; m += 1) {
@@ -195,6 +206,7 @@ const sheets = [
   { name: '总月对比表', rows: sheetTotal() },
   { name: '歌剧月对比表', rows: sheetBrand('歌剧', '歌剧月对比表') },
   { name: 'DH月对比表', rows: sheetBrand('DH', 'DH月对比表') },
+  { name: 'PF月对比表', rows: sheetBrand('PF', 'PF月对比表') },
   { name: '日汇总表', rows: sheetDaily() },
 ];
 

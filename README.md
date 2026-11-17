@@ -6,7 +6,7 @@
 
 一套完全离线运行的本地财务账套 + AI 智能体 + 格式转换 + MCP 对接方案
 
-[![Version](https://img.shields.io/badge/version-1.6.3-7b2b8a?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.0-7b2b8a?style=flat-square)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![SQLite](https://img.shields.io/badge/SQLite-%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8-003B57?style=flat-square&logo=sqlite&logoColor=white)](#)
 [![Offline](https://img.shields.io/badge/%E7%A6%BB%E7%BA%BF%E5%8F%AF%E7%94%A8-100%25-2ea44f?style=flat-square)](#)
@@ -279,6 +279,15 @@ npm run account -- delete 财务01              # 三次人工确认后软删除
 3. `npm run dev`，用原账号登录；若是全新库，注册后直接用新账号（`REGISTER_MODE` 默认 `open`，注册完建议改回 `local` 或 `closed`），或用 `.local/local-admin.txt` 里的初始管理员
 4. 桌面端自动登录需要 `.local/desktop-credentials.json`（`{"username":"…","password":"…"}`），换机后重新生成
 
+## 🆕 1.7.0 更新（框架扩充）
+
+- **新增领域表**：`sales_channels` / `sales_daily` / `ops_spend` / `distributors` / `distribution_sales` / `work_reports` / `docs` / `doc_chunks` / `import_templates`
+- **已实现**：渠道维护、销售日数据导入与查询（双口径字段）、工作汇报读写、文档入库分块与关键词检索（带出处）
+- **占位**：运营花费与分销目前只读空表，等模板确定后接导入
+- **接口**：`/api/enterprise/*` 共 11 个端点
+- **工具**：新增 11 个（共 52 个），路由新增 sales / kb 两组
+- **测试**：`tools/test-enterprise.mjs` 8 项
+
 ## 🆕 1.6.3 更新
 
 - **意图路由独立成模块**：`backend/toolrouter.mjs`，七组关键词 + 同义词（退单/几单/赚/应收/记账/管理员等），命中多组取并集
@@ -453,6 +462,6 @@ node tools/change-gate.mjs check         # 有未批准提案时退出码 1
 
 <div align="center">
 
-**版本 1.6.3** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
+**版本 1.7.0** · 变更记录见 [CHANGELOG.md](CHANGELOG.md) · 数据留在自己机器上
 
 </div>

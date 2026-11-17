@@ -6,6 +6,7 @@ import * as recurring from './recurring.mjs';
 import * as tags from './tags.mjs';
 import * as fileops from './fileops.mjs';
 import * as orders from './orders.mjs';
+import * as ent from './enterprise.mjs';
 
 export const ok = (data = null, message = '') => ({ code: 0, data, message });
 export const fail = (message = '操作失败', code = 1) => ({ code, data: null, message });
@@ -1215,6 +1216,17 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'order_summary': return orders.orderSummary(sid, args);
     case 'logistics_summary': return orders.logisticsSummary(sid, args);
     case 'expense_detail': return orders.expenseDetail(sid, args);
+    case 'list_channels': return ent.listChannels(sid, args);
+    case 'save_channel': return ent.saveChannel(sid, args);
+    case 'list_sales': return ent.listSales(sid, args);
+    case 'import_sales': return ent.importSales(sid, args);
+    case 'list_ops': return ent.listOpsSpend(sid, args);
+    case 'list_distribution': return ent.listDistribution(sid, args);
+    case 'add_work_report': return ent.addWorkReport(sid, args);
+    case 'list_work_reports': return ent.listWorkReports(sid, args);
+    case 'add_doc': return ent.addDoc(sid, args);
+    case 'search_docs': return ent.searchDocs(sid, args);
+    case 'list_docs': return ent.listDocs(sid, args);
     case 'save_tag': return tags.addTag(sid, args, user);
     case 'get_closing_status': return closingList(sid, args.period);
     case 'create_voucher': return createVoucher(sid, args, user);

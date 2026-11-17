@@ -14,6 +14,7 @@ import * as ocr from './ocr.mjs';
 import * as fileops from './fileops.mjs';
 import * as ord from './orders.mjs';
 import { pickToolNames, needsFullRetry } from './toolrouter.mjs';
+import * as ent from './enterprise.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
@@ -31,6 +32,8 @@ const TOOL_NAMES = [
   'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
   'list_tags', 'save_tag',
   'list_attachments', 'ocr_file', 'convert_file', 'file_formats',
+  'list_channels', 'save_channel', 'list_sales', 'import_sales', 'list_ops', 'list_distribution',
+  'add_work_report', 'list_work_reports', 'add_doc', 'search_docs', 'list_docs',
   'create_order', 'update_order_status', 'change_order_price', 'return_order_items',
   'add_shipment', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
   clarify.TOOL_NAME, clarify.ANALYZE_TOOL, 'read_attachment', 'data_audit',
@@ -55,6 +58,17 @@ const TOOL_DESCRIPTIONS = {
   ocr_file: '图片识别文字',
   convert_file: '转换文件格式',
   file_formats: '可用格式',
+  list_channels: '查渠道',
+  save_channel: '建/改渠道',
+  list_sales: '查销售日数据',
+  import_sales: '导入销售数据',
+  list_ops: '查运营花费',
+  list_distribution: '查分销业绩',
+  add_work_report: '记录工作汇报',
+  list_work_reports: '查工作汇报',
+  add_doc: '文档入库',
+  search_docs: '检索文档',
+  list_docs: '查文档目录',
   create_order: '建订单',
   update_order_status: '改订单状态',
   change_order_price: '改单价',
@@ -67,6 +81,46 @@ const TOOL_DESCRIPTIONS = {
 };
 
 const TOOL_SCHEMAS = {
+  list_channels: { type: 'object', properties: { source: { type: 'string', description: 'sales_dept|wdt' } } },
+  save_channel: {
+    type: 'object',
+    properties: { name: { type: 'string' }, platform: { type: 'string' }, shop_code: { type: 'string' }, source: { type: 'string' } },
+    required: ['name'],
+  },
+  list_sales: {
+    type: 'object',
+    properties: { from: { type: 'string' }, to: { type: 'string' }, source: { type: 'string' }, product: { type: 'string' }, limit: { type: 'number' } },
+  },
+  import_sales: {
+    type: 'object',
+    properties: {
+      source: { type: 'string', description: 'sales_dept|wdt' },
+      date: { type: 'string' },
+      rows: { type: 'array', description: '行：[{date,sku,product,qty,amount,return_qty,return_amount,cost,channel_id}]' },
+    },
+    required: ['rows'],
+  },
+  list_ops: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } },
+  list_distribution: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } },
+  add_work_report: {
+    type: 'object',
+    properties: {
+      author: { type: 'string' }, dept: { type: 'string' }, period: { type: 'string', description: 'YYYY-MM-DD' },
+      kind: { type: 'string', description: 'daily|weekly|monthly' }, content: { type: 'string' },
+    },
+    required: ['author', 'content'],
+  },
+  list_work_reports: {
+    type: 'object',
+    properties: { period: { type: 'string' }, author: { type: 'string' }, kind: { type: 'string' }, limit: { type: 'number' } },
+  },
+  add_doc: {
+    type: 'object',
+    properties: { title: { type: 'string' }, content: { type: 'string' }, category: { type: 'string' }, dept: { type: 'string' }, effective_from: { type: 'string' } },
+    required: ['title', 'content'],
+  },
+  search_docs: { type: 'object', properties: { q: { type: 'string' }, limit: { type: 'number' } }, required: ['q'] },
+  list_docs: { type: 'object', properties: { limit: { type: 'number' } } },
   create_order: {
     type: 'object',
     properties: {
@@ -458,6 +512,7 @@ const READ_ONLY_TOOLS = new Set([
   'list_invoices', 'get_closing_status', 'list_invoice_templates',
   'list_recurring', 'recurring_reminder', 'read_attachment', 'data_audit', 'list_tags',
   'list_attachments', 'file_formats', 'ocr_file', 'list_orders', 'order_summary', 'logistics_summary', 'expense_detail',
+  'list_channels', 'list_sales', 'list_ops', 'list_distribution', 'list_work_reports', 'list_docs', 'search_docs',
 ]);
 
 const toolDefs = (allowed = null) => TOOL_NAMES
@@ -831,7 +886,7 @@ async function handle(req, res) {
   }
   // 记账写操作：管理员或 会计/出纳 角色，普通用户只读
   const WRITE_PREFIX = ['/api/vouchers', '/api/assets', '/api/invoices', '/api/subjects',
-    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring', '/api/tags', '/api/orders'];
+    '/api/closing', '/api/auxiliaries', '/api/agent/actions', '/api/recurring', '/api/tags', '/api/orders', '/api/enterprise'];
   if (['POST', 'PUT', 'DELETE'].includes(method)
     && WRITE_PREFIX.some((x) => p === x || p.startsWith(`${x}/`))
     && !biz.canWrite(user)) {
@@ -904,6 +959,19 @@ async function handle(req, res) {
   // 凭证
   if (p === '/api/vouchers' && method === 'GET') return reply(res, biz.listVouchers(setId, q));
   if (p === '/api/vouchers' && method === 'POST') return reply(res, biz.createVoucher(setId, body, actor));
+
+  // ---------------- 企业助手扩展（销售/运营/分销/汇报/文档） ----------------
+  if (p === '/api/enterprise/channels' && method === 'GET') return reply(res, ent.listChannels(setId, q));
+  if (p === '/api/enterprise/channels' && method === 'POST') return reply(res, ent.saveChannel(setId, body));
+  if (p === '/api/enterprise/sales' && method === 'GET') return reply(res, ent.listSales(setId, q));
+  if (p === '/api/enterprise/sales/import' && method === 'POST') return reply(res, ent.importSales(setId, body));
+  if (p === '/api/enterprise/ops' && method === 'GET') return reply(res, ent.listOpsSpend(setId, q));
+  if (p === '/api/enterprise/distribution' && method === 'GET') return reply(res, ent.listDistribution(setId, q));
+  if (p === '/api/enterprise/work-reports' && method === 'GET') return reply(res, ent.listWorkReports(setId, q));
+  if (p === '/api/enterprise/work-reports' && method === 'POST') return reply(res, ent.addWorkReport(setId, body));
+  if (p === '/api/enterprise/docs' && method === 'GET') return reply(res, ent.listDocs(setId, q));
+  if (p === '/api/enterprise/docs' && method === 'POST') return reply(res, ent.addDoc(setId, body));
+  if (p === '/api/enterprise/docs/search' && method === 'GET') return reply(res, ent.searchDocs(setId, q));
 
   // ---------------- 订单 / 物流 / 支出明细 ----------------
   if (p === '/api/orders' && method === 'GET') return reply(res, ord.listOrders(setId, q));

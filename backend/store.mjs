@@ -410,6 +410,116 @@ CREATE TABLE IF NOT EXISTS order_shipments (
 );
 CREATE INDEX IF NOT EXISTS idx_order_ship ON order_shipments(order_id, id);
 
+
+/* 企业内部助手扩展：销售/运营/分销/汇报/文档 */
+CREATE TABLE IF NOT EXISTS sales_channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  platform TEXT NOT NULL DEFAULT '',
+  shop_code TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'sales_dept',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  UNIQUE(set_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS sales_daily (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  channel_id INTEGER NOT NULL DEFAULT 0,
+  date TEXT NOT NULL,
+  sku TEXT NOT NULL DEFAULT '',
+  product TEXT NOT NULL DEFAULT '',
+  qty REAL NOT NULL DEFAULT 0,
+  amount REAL NOT NULL DEFAULT 0,
+  return_qty REAL NOT NULL DEFAULT 0,
+  return_amount REAL NOT NULL DEFAULT 0,
+  cost REAL NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'sales_dept',
+  batch_id INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sales_daily ON sales_daily(set_id, date, source);
+
+CREATE TABLE IF NOT EXISTS ops_spend (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  channel TEXT NOT NULL DEFAULT '',
+  metric TEXT NOT NULL DEFAULT 'spend',
+  amount REAL NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  submitted_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS distributors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  level TEXT NOT NULL DEFAULT '',
+  contact TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  UNIQUE(set_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS distribution_sales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  distributor_id INTEGER NOT NULL DEFAULT 0,
+  date TEXT NOT NULL,
+  qty REAL NOT NULL DEFAULT 0,
+  amount REAL NOT NULL DEFAULT 0,
+  return_amount REAL NOT NULL DEFAULT 0,
+  submitted_by TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS work_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  author TEXT NOT NULL DEFAULT '',
+  dept TEXT NOT NULL DEFAULT '',
+  period TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'daily',
+  content TEXT NOT NULL DEFAULT '',
+  metrics TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_work_reports ON work_reports(set_id, period, author);
+
+CREATE TABLE IF NOT EXISTS docs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT '',
+  dept TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT '',
+  effective_from TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS doc_chunks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  doc_id INTEGER NOT NULL,
+  seq INTEGER NOT NULL DEFAULT 0,
+  text TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_doc_chunks ON doc_chunks(doc_id);
+
+CREATE TABLE IF NOT EXISTS import_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  set_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  target TEXT NOT NULL DEFAULT '',
+  mapping TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS app_state (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL DEFAULT '',

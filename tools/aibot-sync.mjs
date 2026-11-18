@@ -129,7 +129,10 @@ function parseFile(file) {
     if (o?.type !== 'message') continue;
     const role = o.role === 'user' ? 'user' : o.role === 'assistant' ? 'assistant' : '';
     if (!role) continue;
-    const text = role === 'user' ? cleanUserText(textOf(o.content)) : textOf(o.content);
+    const rawText = textOf(o.content);
+    // 跳过系统通知/后台任务事件，避免污染会话记录
+    if (/<task-notification>|SYSTEM NOTIFICATION - NOT USER INPUT/i.test(rawText)) continue;
+    const text = role === 'user' ? cleanUserText(rawText) : rawText;
     if (!text) continue;
     const ts = Number(o.timestamp) || Date.now();
     out.push({ key: `${base}:${o.id || `${ts}:${out.length}`}:${role}`, role, text, date: new Date(ts) });

@@ -161,18 +161,31 @@
     return el;
   }
 
+  let unregister = null;
   function open(caliber = 'sales', dim = 'month', cat = 'summary') {
     st.caliber = caliber === 'finance' ? 'finance' : 'sales';
     st.dim = dim || 'month';
     st.cat = cat || 'summary';
     const r = rangeOf(st.dim); st.from = r.from; st.to = r.to;
     st.open = true;
-    ensure().classList.add('show');
+    const node = ensure();
+    node.classList.add('show');
+    // 只占主内容区，侧栏保持可见可点
+    if (window.__zdInline) {
+      window.__zdInline.key('report');
+      window.__zdInline.apply(node);
+      if (unregister) unregister();
+      unregister = window.__zdInline.register(close);
+    }
     load();
   }
   window.__zdOpenReports = open;
 
-  function close() { st.open = false; if (el) el.classList.remove('show'); }
+  function close() {
+    st.open = false;
+    if (el) el.classList.remove('show');
+    if (unregister) { unregister(); unregister = null; }
+  }
   window.__zdCloseReports = close;
 
   async function load() {
@@ -279,7 +292,6 @@
           <div class="zd-rp-sub">时间范围 ${st.from} ~ ${st.to}　|　维度 ${esc((DIMS.find((d) => d[0] === st.dim) || [])[1] || '')}　|　分类 ${esc((cats.find((c) => c[0] === st.cat) || [])[1] || '')}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="zd-rp-btn" data-a="close">返回</button>
           <button class="zd-rp-btn primary" data-a="reload">生成报表</button>
         </div>
       </div>

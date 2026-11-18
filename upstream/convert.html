@@ -67,7 +67,7 @@
     <h1>文件格式转换</h1>
     <div class="sub">上传本地文件，或选择导出中心的报表，改成你需要的格式</div>
   </div>
-  <a class="back" href="/">返回妆点管账</a>
+  <a class="back" href="/" id="zd-back">返回妆点管账</a>
 </header>
 
 <div class="wrap">
@@ -204,6 +204,16 @@ $('#go').onclick = async () => {
   try { await Promise.all([loadFormats(), loadFiles()]); }
   catch (e) { setStatus('初始化失败：' + esc(e.message), 'err'); }
 })();
+</script>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    if (q.get('embed') !== '1') return;
+    document.documentElement.classList.add('zd-embed');
+    var st = document.createElement('style');
+    st.textContent = '.zd-embed .back{display:none!important} .zd-embed header{padding-top:18px!important}';
+    document.head.appendChild(st);
+  })();
 </script>
 </body>
 </html>

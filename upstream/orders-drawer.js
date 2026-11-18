@@ -128,16 +128,27 @@
     document.body.appendChild(drawer);
   }
 
+  let unregister = null;
   function close() {
     if (mask) mask.remove();
     if (drawer) drawer.remove();
     mask = null; drawer = null;
+    if (unregister) { unregister(); unregister = null; }
   }
 
   async function open(t = 'orders') {
     ensureDrawer();
     tab = t;
     detail = null;
+    // 像原生页一样只占主内容区：侧栏保持可见，抽屉铺满主区
+    if (window.__zdInline) {
+      window.__zdInline.key('orders');
+      window.__zdInline.mask(mask);
+      window.__zdInline.apply(drawer);
+      drawer.style.setProperty('border-left', '1px solid #E2DFD7', 'important');
+      if (unregister) unregister();
+      unregister = window.__zdInline.register(close);
+    }
     await render();
   }
 

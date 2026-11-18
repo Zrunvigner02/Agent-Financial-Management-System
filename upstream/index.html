@@ -26,34 +26,60 @@
       .zd-convert-item:hover svg { stroke:#17241F; }
       .zd-convert-item.zd-collapsed { padding:0; justify-content:center; }
       .zd-convert-item.zd-collapsed .zd-txt { display:none; }
+      /* 文件格式转换：固定在左侧状态栏左下角 */
+      #zd-side-foot { position:fixed; bottom:10px; z-index:9996; display:none; }
+      #zd-side-foot .zd-convert-item { background:transparent; border-radius:8px; height:34px; padding:0 9px; }
     </style>
     <!-- 意图追问工具：必须在 SPA bundle 之前同步执行，以便拦截 chat 响应流。
          版本号随每次改动递增，配合 server.mjs 的 no-store 保证刷新后一定加载最新脚本 -->
     <script src="/clarify.js?v=20261111e"></script>
+    <!-- 内嵌主区宿主：报表/订单/格式转换只占主内容区，不盖左侧状态栏 -->
+    <script src="/inline-host.js?v=20261118a"></script>
     <script>
       (function () {
         var HREF = '/convert.html';
         var SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>';
+        function openConvert(e) {
+          if (e) e.preventDefault();
+          if (typeof window.__zdOpenConvert === 'function') window.__zdOpenConvert();
+          else location.href = HREF;
+        }
         function mount() {
           var menu = document.querySelector('.app-menu');
           if (!menu) return false;
-          var a = menu.querySelector('[data-zd-convert]');
+          var side = menu.closest('aside') || menu.parentElement || menu;
+          var foot = document.getElementById('zd-side-foot');
+          if (!foot) {
+            foot = document.createElement('div');
+            foot.id = 'zd-side-foot';
+            document.body.appendChild(foot);
+          }
+          var a = foot.querySelector('[data-zd-convert]');
           if (!a) {
             a = document.createElement('a');
             a.className = 'zd-convert-item';
             a.setAttribute('data-zd-convert', '1');
+            a.setAttribute('data-zd-open', 'convert');
             a.href = HREF;
             a.title = '手动修改文件格式';
             a.innerHTML = SVG + '<span class="zd-txt">文件格式转换</span>';
-            menu.appendChild(a);
+            a.addEventListener('click', openConvert);
+            foot.appendChild(a);
+          }
+          var salesOn = !!document.querySelector('.zd-sb.show');
+          var r = (side && side.getBoundingClientRect) ? side.getBoundingClientRect() : null;
+          var visible = !!(r && r.width > 60 && !salesOn);
+          foot.style.display = visible ? 'block' : 'none';
+          if (r) {
+            foot.style.left = Math.round(r.left + 8) + 'px';
+            foot.style.width = Math.round(r.width - 16) + 'px';
           }
           a.classList.toggle('zd-collapsed', menu.classList.contains('el-menu--collapse'));
           return true;
         }
         var t = setInterval(function () { if (mount()) clearInterval(t); }, 200);
         setTimeout(function () { clearInterval(t); }, 15000);
-        // Vue 重渲染删掉注入节点时自动补回
         new MutationObserver(function () { mount(); })
           .observe(document.body, { childList: true, subtree: true });
       })();
@@ -78,6 +104,7 @@
           var a = document.createElement('a');
           a.className = 'zd-convert-item';
           a.setAttribute('data-zd-' + key, '1');
+          a.setAttribute('data-zd-open', key);
           a.href = 'javascript:void(0)';
           a.title = label;
           a.innerHTML = icon + '<span class="zd-txt">' + label + '</span>';
@@ -88,6 +115,7 @@
           var a = document.createElement('a');
           a.className = 'zd-convert-item';
           a.setAttribute('data-zd-report', '1');
+          a.setAttribute('data-zd-open', 'report');
           a.href = 'javascript:void(0)';
           a.title = '报表';
           a.innerHTML = ICON_REPORT + '<span class="zd-txt">报表</span>';

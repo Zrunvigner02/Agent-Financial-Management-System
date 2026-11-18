@@ -105,7 +105,7 @@
   .zd-sb-item:last-child{border-bottom:0}
   .zd-sb-canvas{width:100%;display:block}
   /* 销售端专用侧栏 */
-  #zd-sales-menu{display:none;padding:8px;background:transparent}
+  #zd-sales-menu{display:none;padding:8px;background:transparent;flex-direction:column}
   .zd-sm-item{display:flex;align-items:center;gap:8px;height:34px;line-height:34px;margin-bottom:2px;padding:0 9px;
     border-radius:8px;color:var(--ink-2,#3D4F49);font-size:12.5px;cursor:pointer;white-space:nowrap;position:relative;
     transition:background .2s,color .2s;text-decoration:none}
@@ -115,6 +115,8 @@
   .zd-sm-item svg{width:16px;height:16px;flex:none;stroke:#6E7B76;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .zd-sm-item:hover svg,.zd-sm-item.on svg{stroke:#1F5E4C}
   .zd-sm-sep{height:1px;background:var(--line-2,#EFECE4);margin:6px 8px}
+  /* 文件格式转换固定在左下角 */
+  .zd-sm-item[data-sm="convert"]{margin-top:auto}
   #zd-sales-menu.zd-sm-collapsed{padding:8px 0}
   #zd-sales-menu.zd-sm-collapsed .zd-sm-item{padding:0;justify-content:center}
   #zd-sales-menu.zd-sm-collapsed .zd-sm-txt{display:none}
@@ -215,19 +217,29 @@
       m = document.createElement('div');
       m.id = 'zd-sales-menu';
       m.innerHTML = `
-        <a class="zd-sm-item on" data-sm="summary">${ICO.summary}<span class="zd-sm-txt">销售汇总</span></a>
-        <a class="zd-sm-item" data-sm="channel">${ICO.channel}<span class="zd-sm-txt">各渠道汇总</span></a>
-        <a class="zd-sm-item" data-sm="staff">${ICO.staff}<span class="zd-sm-txt">员工业绩</span></a>
+        <a class="zd-sm-item on" data-sm="summary" data-zd-open="board">${ICO.summary}<span class="zd-sm-txt">销售汇总</span></a>
+        <a class="zd-sm-item" data-sm="channel" data-zd-open="report">${ICO.channel}<span class="zd-sm-txt">各渠道汇总</span></a>
+        <a class="zd-sm-item" data-sm="staff" data-zd-open="report">${ICO.staff}<span class="zd-sm-txt">员工业绩</span></a>
         <div class="zd-sm-sep"></div>
-        <a class="zd-sm-item" data-sm="orders">${ICO.order}<span class="zd-sm-txt">订单</span></a>
-        <a class="zd-sm-item" data-sm="fixed">${ICO.cost}<span class="zd-sm-txt">固定支出</span></a>
-        <a class="zd-sm-item" data-sm="report">${ICO.report}<span class="zd-sm-txt">报表</span></a>
-        <a class="zd-sm-item" data-sm="convert">${ICO.conv}<span class="zd-sm-txt">文件格式转换</span></a>`;
+        <a class="zd-sm-item" data-sm="orders" data-zd-open="orders">${ICO.order}<span class="zd-sm-txt">订单</span></a>
+        <a class="zd-sm-item" data-sm="fixed" data-zd-open="fixed">${ICO.cost}<span class="zd-sm-txt">固定支出</span></a>
+        <a class="zd-sm-item" data-sm="report" data-zd-open="report">${ICO.report}<span class="zd-sm-txt">报表</span></a>
+        <a class="zd-sm-item" data-sm="convert" data-zd-open="convert">${ICO.conv}<span class="zd-sm-txt">文件格式转换</span></a>`;
       m.addEventListener('click', onSalesMenuClick);
       appMenu.parentElement.insertBefore(m, appMenu.nextSibling);
     }
     m.classList.toggle('zd-sm-collapsed', appMenu.classList.contains('el-menu--collapse'));
+    fitHeight();
   }
+
+  // 让菜单撑满侧栏剩余高度，使「文件格式转换」真正贴到左下角
+  function fitHeight() {
+    const m = document.getElementById('zd-sales-menu');
+    if (!m) return;
+    const r = m.getBoundingClientRect();
+    if (r.height > 0) m.style.minHeight = Math.max(240, window.innerHeight - r.top - 44) + 'px';
+  }
+  window.addEventListener('resize', fitHeight);
 
   function onSalesMenuClick(e) {
     const it = e.target.closest('[data-sm]');
@@ -240,7 +252,7 @@
     else if (k === 'report') { if (window.__zdOpenReports) window.__zdOpenReports('sales', 'month', 'summary'); }
     else if (k === 'orders') { if (window.__zdOpenOrders) window.__zdOpenOrders(); }
     else if (k === 'fixed') { if (window.__zdOpenFixedCost) window.__zdOpenFixedCost(); }
-    else if (k === 'convert') { location.href = '/convert.html'; }
+    else if (k === 'convert') { if (typeof window.__zdOpenConvert === 'function') window.__zdOpenConvert(); else location.href = '/convert.html'; }
     document.querySelectorAll('#zd-sales-menu .zd-sm-item').forEach((x) => x.classList.toggle('on', x === it));
   }
 
@@ -248,13 +260,14 @@
     const appMenu = document.querySelector('.app-menu');
     const sm = document.getElementById('zd-sales-menu');
     if (appMenu) appMenu.style.display = mode === 'sales' ? 'none' : '';
-    if (sm) sm.style.display = mode === 'sales' ? 'block' : 'none';
+    if (sm) sm.style.display = mode === 'sales' ? 'flex' : 'none';
   }
 
   function openBoard() {
     state.open = true;
     ensureSalesMenu();
     setMenuMode('sales');
+    setTimeout(fitHeight, 0);
     const el = ensureOverlay();
     if (!el) return;
     el.classList.add('show');

@@ -85,6 +85,12 @@ def ensure_services():
         log('spawn claw-sync --watch')
     except Exception as e:
         log('claw-sync spawn failed: %s' % e)
+    # 企微 AIBot 会话 → 妆点智能体会话历史（同样有单例锁）
+    try:
+        spawn_hidden([NODE, os.path.join(ROOT, 'tools', 'aibot-sync.mjs'), '--watch'])
+        log('spawn aibot-sync --watch')
+    except Exception as e:
+        log('aibot-sync spawn failed: %s' % e)
     deadline = time.time() + 30
     while time.time() < deadline:
         if healthy(8000) and healthy(5173):

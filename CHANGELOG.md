@@ -1,5 +1,18 @@
 # 更新日志
 
+## [1.9.1] — 2026-11-18
+
+### 新增
+
+- 企微接入定为 WorkBuddy 企微 AIBot（长连接）方案：免公网、免管理员、5 分钟完成。
+- `tools/aibot-sync.mjs`：企微 AIBot 会话 → 妆点智能体会话按日归集（`wecom-aibot-YYYYMMDD`），15 秒增量、事件级幂等、单例锁。
+- 桌面端启动器自动拉起 aibot-sync；新增 npm 脚本 `aibot:sync` / `aibot:watch`。
+
+### 修复
+
+- GitHub 推送脚本改为直连并加重试（绕开本机代理破坏 pack 流）：`tools/push-git.mjs` 带权限预检。
+- `tools/gh-api-push.mjs` 修命令行过长（ENAMETOOLONG）与接口无返回时的静默失败。
+
 ## [1.9.0] — 2026-11-18
 
 ### 新增

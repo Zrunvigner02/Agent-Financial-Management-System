@@ -1,6 +1,6 @@
 {
   "name": "jinli-finance-local",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -54,6 +54,8 @@
     "finance:gaps": "node tools/finance-pnl.mjs --gaps",
     "test:wecom-bot": "node tools/test-wecom-bot.mjs",
     "wecom:digest": "node tools/wecom-digest.mjs",
-    "wecom:digest:draft": "node tools/wecom-digest.mjs --no-send"
+    "wecom:digest:draft": "node tools/wecom-digest.mjs --no-send",
+    "aibot:sync": "node tools/aibot-sync.mjs",
+    "aibot:watch": "node tools/aibot-sync.mjs --watch"
   }
 }

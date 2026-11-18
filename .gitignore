@@ -37,3 +37,4 @@ data/attachments/
 # 发布压缩包（本地构建产物，不入库）
 release/*.zip
 .backup-*/
+data/*.lock

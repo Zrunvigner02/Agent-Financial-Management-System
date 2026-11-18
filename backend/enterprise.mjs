@@ -5,7 +5,12 @@
  *  - 已实现：渠道与门店维护、日销售查询、工作汇报读写、文档入库与检索（LIKE，带出处）
  *  - 占位：销售/运营/分销的批量导入（返回 pending，等模板确定后接）
  */
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { get, all, run, now } from './store.mjs';
+import { xlsToTable } from './xls.mjs';
+import { recognize as ocrRecognize } from './ocr.mjs';
 
 const ok = (data, message = '') => ({ code: 0, message, data });
 const fail = (message) => ({ code: 1, message, data: null });
@@ -81,7 +86,9 @@ export function importSales(setId, { rows = [], source = 'sales_dept', date = ''
   if (!Array.isArray(rows) || !rows.length) return fail('没有可导入的行');
   const src = ['sales_dept', 'wdt'].includes(source) ? source : 'sales_dept';
   let inserted = 0;
+  let skipped = 0;
   const errors = [];
+  const seen = new Set();
   for (const [i, r] of rows.entries()) {
     const d = String(r.date || date || '').slice(0, 10);
     if (!DATE_RE.test(d)) { errors.push(`第 ${i + 1} 行日期不合法`); continue; }
@@ -94,17 +101,30 @@ export function importSales(setId, { rows = [], source = 'sales_dept', date = ''
     const fee = money(r.fee != null ? r.fee : 0);
     const gross = money(amount - returnAmount - cost);
     const net = money(gross - fee);
+    const sku = String(prod?.sku || r.sku || '');
+    const product = String(prod?.name || r.product || '');
+    // 去重：同账套 + 同日期 + 同商品/SKU + 同销售额/退货额，视为重复（跨来源也算），跳过
+    const key = [d, sku, product, amount, returnAmount].join('|');
+    if (seen.has(key)) { skipped += 1; continue; }
+    const dup = get(`SELECT id FROM sales_daily WHERE set_id = ? AND date = ?
+      AND COALESCE(sku,'') = ? AND COALESCE(product,'') = ? AND amount = ? AND return_amount = ? LIMIT 1`,
+    setId, d, sku, product, amount, returnAmount);
+    if (dup) { skipped += 1; seen.add(key); continue; }
+    seen.add(key);
     run(`INSERT INTO sales_daily (set_id, channel_id, date, sku, product, group_name, qty, amount, return_qty, return_amount,
         cost, fee, gross_profit, net_profit, source, batch_id, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-    setId, Number(r.channel_id || 0), d, String(prod?.sku || r.sku || ''), String(prod?.name || r.product || ''),
+    setId, Number(r.channel_id || 0), d, sku, product,
     String(prod?.group_name || ''), qty, amount, Number(r.return_qty || 0), returnAmount,
     cost, fee, gross, net, src, now());
     inserted += 1;
   }
-  return inserted
-    ? ok({ inserted, errors }, `已导入 ${inserted} 行${errors.length ? `，${errors.length} 行有问题` : ''}`)
-    : fail(`全部未导入：${errors[0] || '格式不符'}`);
+  if (!inserted) {
+    if (skipped) return ok({ inserted, skipped, errors }, `全部 ${skipped} 行为重复数据，已跳过（未重复入库）`);
+    return fail(`全部未导入：${errors[0] || '格式不符'}`);
+  }
+  return ok({ inserted, skipped, errors },
+    `已导入 ${inserted} 行${skipped ? `，跳过重复 ${skipped} 行` : ''}${errors.length ? `，${errors.length} 行有问题` : ''}`);
 }
 
 /* ---------------- 运营花费 / 分销 ---------------- */
@@ -322,4 +342,136 @@ export function salesCompare(setId, { from = '', to = '', level = 'product' } = 
     count: items.length, items,
     note: items.length ? '' : '所选区间没有数据，先导入销售日数据',
   });
+}
+
+/* ---------------- 销售文件解析（CSV / Excel / 图片 OCR） ---------------- */
+
+const HEAD_ALIAS = {
+  date: ['日期', '销售日期', 'date', '时间', '交易日期'],
+  product: ['商品', '商品名称', '产品', '产品名称', '名称', 'product', '宝贝'],
+  sku: ['sku', '编码', '货号', '商品编码', '商家编码'],
+  qty: ['数量', '销量', '销售数量', 'qty', '件数'],
+  amount: ['销售额', '金额', '销售金额', '收入', 'amount', '成交金额'],
+  return_qty: ['退货数量', '退款数量', 'return_qty', '退件数'],
+  return_amount: ['退货金额', '退款金额', '退款', '退货', 'return_amount', '退款总额'],
+  cost: ['成本', '商品成本', '成本金额', 'cost'],
+  fee: ['费用', '平台费用', '平台费', '服务费', '佣金', 'fee', '推广费'],
+  channel: ['渠道', '店铺', '平台', 'channel', '店铺名称'],
+};
+
+function normDate(v) {
+  const s = String(v == null ? '' : v).trim();
+  let m = s.match(/^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
+  if (m) return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return '';
+}
+
+function normNum(v) {
+  if (v == null || v === '') return 0;
+  const s = String(v).replace(/[¥,，\s元]/g, '').replace(/%$/, '');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function splitCsv(text) {
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i += 1; }
+      else if (ch === '"') q = false;
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',' || ch === '\t') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i += 1;
+      row.push(cell); cell = '';
+      if (row.some((x) => String(x).trim() !== '')) rows.push(row);
+      row = [];
+    } else cell += ch;
+  }
+  row.push(cell);
+  if (row.some((x) => String(x).trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function mapTable(columns, tableRows) {
+  const fieldOf = {};
+  for (const c of columns) {
+    const label = String(c.label || '').toLowerCase().trim();
+    for (const [field, aliases] of Object.entries(HEAD_ALIAS)) {
+      if (fieldOf[field]) continue;
+      if (aliases.some((a) => label === a.toLowerCase() || label.includes(a.toLowerCase()))) fieldOf[field] = c.key;
+    }
+  }
+  const rows = [];
+  for (const r of tableRows) {
+    const o = {};
+    for (const [field, key] of Object.entries(fieldOf)) o[field] = r[key];
+    const mapped = {
+      date: normDate(o.date), product: String(o.product || '').trim(), sku: String(o.sku || '').trim(),
+      qty: normNum(o.qty), amount: normNum(o.amount), return_qty: normNum(o.return_qty),
+      return_amount: normNum(o.return_amount), cost: normNum(o.cost), fee: normNum(o.fee),
+      channel: String(o.channel || '').trim(),
+    };
+    if (!mapped.date || (!mapped.product && !mapped.sku)) continue;
+    rows.push(mapped);
+  }
+  return { rows, fields: Object.keys(fieldOf) };
+}
+
+export async function parseSalesUpload({ name = '', dataBase64 = '' } = {}) {
+  if (!dataBase64) return fail('没有收到文件内容');
+  const ext = String(name).split('.').pop().toLowerCase();
+  let buf;
+  try { buf = Buffer.from(String(dataBase64).replace(/^data:[^;]+;base64,/, ''), 'base64'); }
+  catch { return fail('文件解码失败'); }
+  try {
+    if (ext === 'csv' || ext === 'txt' || ext === 'tsv') {
+      const text = buf.toString('utf8').replace(/^\uFEFF/, '');
+      const grid = splitCsv(text);
+      const head = grid[0] || [];
+      const columns = head.map((h, i) => ({ key: `c${i}`, label: String(h || `列${i + 1}`) }));
+      const tableRows = grid.slice(1).map((r) => { const o = {}; r.forEach((v, i) => { o[`c${i}`] = v; }); return o; });
+      const { rows, fields } = mapTable(columns, tableRows);
+      return ok({ kind: 'table', ext, columns, rows, fields, count: rows.length, text: text.slice(0, 4000) });
+    }
+    if (ext === 'xlsx' || ext === 'xls') {
+      const t = xlsToTable(buf, 800);
+      if (!t || !t.table) return fail('Excel 里没有解析到表格');
+      const { rows, fields } = mapTable(t.table.columns, t.table.rows);
+      return ok({ kind: 'table', ext, columns: t.table.columns, rows, fields, count: rows.length, sheet: t.sheet });
+    }
+    if (['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(ext)) {
+      const tmp = path.join(os.tmpdir(), `zd-sales-${Date.now()}.${ext}`);
+      fs.writeFileSync(tmp, buf);
+      let r;
+      try { r = await ocrRecognize(tmp, { ext }); } finally { try { fs.unlinkSync(tmp); } catch {} }
+      const text = String(r && (r.text || r.content) || '').trim();
+      return ok({ kind: 'text', ext, rows: [], count: 0, text: text.slice(0, 6000) });
+    }
+    return fail(`不支持的文件类型：.${ext}`);
+  } catch (e) {
+    return fail(`解析失败：${e.message}`);
+  }
+}
+
+/* ---------------- 数据归集台账 ---------------- */
+export function listIntake(setId, { from = '', to = '', category = '', source = '', limit = 200 } = {}) {
+  try {
+    const where = ['set_id = ?'];
+    const params = [setId];
+    if (from) { where.push('doc_date >= ?'); params.push(from); }
+    if (to) { where.push('doc_date <= ?'); params.push(to); }
+    if (category) { where.push('category = ?'); params.push(category); }
+    if (source) { where.push('source = ?'); params.push(source); }
+    const rows = all(`SELECT * FROM data_intake WHERE ${where.join(' AND ')}
+      ORDER BY doc_date DESC, id DESC LIMIT ?`, ...params, Math.min(1000, Number(limit) || 200));
+    return ok({ count: rows.length, items: rows });
+  } catch (e) {
+    return ok({ count: 0, items: [], note: `数据归集表尚未建立：${e.message}` });
+  }
 }

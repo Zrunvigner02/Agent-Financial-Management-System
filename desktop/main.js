@@ -177,18 +177,23 @@ async function resolveSetId(token) {
 }
 
 function sessionInjection(data, sid) {
+  // 前端 bundle 已把登录态从 sessionStorage 迁到 localStorage（免登录改造），
+  // 因此这里同时写入两处：localStorage 供前端路由守卫读取，sessionStorage 保留兼容。
   const values = {
     jl_token: String(data.token || ''),
     jl_username: String(data.username || ''),
     jl_name: String(data.name || ''),
-    jl_role: String(data.role || ''),
+    jl_role: String(data.roleId != null ? data.roleId : (data.role || 'null')),
+    jl_super: data.role === 'super' ? '1' : '0',
     jl_menus: JSON.stringify(data.menus || []),
     jl_set_id: String(sid),
     jl_set_name: '',
   };
-  return `(() => { const s = sessionStorage; ${Object.entries(values)
-    .map(([k, v]) => `s.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
-    .join(' ')} return (s.getItem('jl_token') || '').length; })()`;
+  const sets = Object.entries(values)
+    .map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`
+      + `sessionStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
+    .join(' ');
+  return `(() => { ${sets} return (localStorage.getItem('jl_token') || '').length; })()`;
 }
 
 function installHeaderHook() {
@@ -359,7 +364,7 @@ async function bootFlow(tag = '启动') {
     win.hide();
     await win.loadURL(`${ORIGIN}/`);
     const n = await win.webContents.executeJavaScript(sessionInjection(auth, setId));
-    if (!n) throw new Error('会话注入失败（sessionStorage 不可写）');
+    if (!n) throw new Error('会话注入失败（localStorage 不可写）');
     await win.loadURL(`${ORIGIN}/dashboard`);
     setStatus('就绪', 100);
     win.show();

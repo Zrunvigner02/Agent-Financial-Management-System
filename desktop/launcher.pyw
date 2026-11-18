@@ -79,6 +79,12 @@ def ensure_services():
     if not healthy(5173):
         spawn_hidden([NODE, os.path.join(ROOT, 'server.mjs')])
         log('spawn frontend :5173')
+    # 对话记录常驻同步（脚本内部有单例锁，重复拉起会自动退出）
+    try:
+        spawn_hidden([NODE, os.path.join(ROOT, 'tools', 'claw-sync.mjs'), '--watch'])
+        log('spawn claw-sync --watch')
+    except Exception as e:
+        log('claw-sync spawn failed: %s' % e)
     deadline = time.time() + 30
     while time.time() < deadline:
         if healthy(8000) and healthy(5173):
@@ -113,7 +119,7 @@ def fallback_browser():
             '--no-first-run', '--no-default-browser-check',
             '--disable-features=TranslateUI']
     spawn_hidden(args)
-    log('fallback: 浏览器应用窗口已打开（需手动登录一次）')
+    log('fallback: 浏览器应用窗口已打开（自动登录已启用，无需手动输入）')
 
 
 def main():

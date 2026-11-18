@@ -15,6 +15,9 @@ import * as fileops from './fileops.mjs';
 import * as ord from './orders.mjs';
 import { pickToolNames, needsFullRetry } from './toolrouter.mjs';
 import * as ent from './enterprise.mjs';
+import * as wecom from './wecom.mjs';
+import * as fin from './finance.mjs';
+import * as wecomBot from './wecom-bot.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
@@ -856,6 +859,19 @@ async function handle(req, res) {
     });
   }
 
+  // 企业微信自建应用回调：不走登录，靠 msg_signature 验签；企微要求 5 秒内响应，故立即返回空串
+  if (p === '/api/wecom/callback' && (method === 'GET' || method === 'POST')) {
+    let raw = '';
+    if (method === 'POST') {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      raw = Buffer.concat(chunks).toString('utf8');
+    }
+    const out = await wecomBot.handleCallback({ method, query: q, rawBody: raw });
+    res.writeHead(out.status, { 'content-type': out.contentType });
+    return res.end(out.body);
+  }
+
   const body = method === 'GET' || method === 'HEAD' ? {} : await readBody(req);
 
   if (p === '/mcp' && method === 'POST') return await handleMcp(res, body, req.headers.authorization);
@@ -905,7 +921,7 @@ async function handle(req, res) {
   }
 
   // 越权保护：管理类接口只允许管理员；账套数据需在当前用户可访问范围内
-  const ADMIN_ONLY = ['/api/accounts', '/api/roles', '/api/sets', '/api/tokens', '/api/agent/llm-config'];
+  const ADMIN_ONLY = ['/api/accounts', '/api/roles', '/api/sets', '/api/tokens', '/api/agent/llm-config', '/api/wecom'];
   if (ADMIN_ONLY.some((x) => p === x || p.startsWith(`${x}/`))) {
     if (!biz.isAdminUser(user)) return sendJson(res, 403, { code: 403, message: '当前账号无管理权限' });
   }
@@ -993,6 +1009,8 @@ async function handle(req, res) {
   if (p === '/api/enterprise/sales/compare' && method === 'GET') return reply(res, ent.salesCompare(setId, q));
   if (p === '/api/enterprise/sales' && method === 'GET') return reply(res, ent.listSales(setId, q));
   if (p === '/api/enterprise/sales/import' && method === 'POST') return reply(res, ent.importSales(setId, body));
+  if (p === '/api/enterprise/sales/parse' && method === 'POST') return reply(res, await ent.parseSalesUpload(body));
+  if (p === '/api/enterprise/intake' && method === 'GET') return reply(res, ent.listIntake(setId, q));
   if (p === '/api/enterprise/ops' && method === 'GET') return reply(res, ent.listOpsSpend(setId, q));
   if (p === '/api/enterprise/distribution' && method === 'GET') return reply(res, ent.listDistribution(setId, q));
   if (p === '/api/enterprise/work-reports' && method === 'GET') return reply(res, ent.listWorkReports(setId, q));
@@ -1000,6 +1018,30 @@ async function handle(req, res) {
   if (p === '/api/enterprise/docs' && method === 'GET') return reply(res, ent.listDocs(setId, q));
   if (p === '/api/enterprise/docs' && method === 'POST') return reply(res, ent.addDoc(setId, body));
   if (p === '/api/enterprise/docs/search' && method === 'GET') return reply(res, ent.searchDocs(setId, q));
+
+  // 企微缓存接入：preview 与 apply 分开，apply 才会写库
+  if (p === '/api/enterprise/wecom/sync' && method === 'POST') {
+    return reply(res, wecom.syncWecom(setId, {
+      apply: body?.apply === true, only: String(body?.only || ''),
+      root: String(body?.root || ''), actor,
+    }));
+  }
+  if (p === '/api/enterprise/wecom/verify' && method === 'GET') return reply(res, wecom.verifyWecom(setId));
+
+  // ---------------- 财务端销售损益表（与销售端口径完全分离） ----------------
+  if (p === '/api/finance/pnl' && method === 'GET') {
+    return reply(res, fin.computePnl(setId, { period: q.period || '', brand: q.brand || '' }));
+  }
+  if (p === '/api/finance/pnl/coverage' && method === 'GET') {
+    return reply(res, fin.coverage(setId, { period: q.period || '' }));
+  }
+
+  // ---------------- 企微多人机器人（绑定与状态，仅管理员） ----------------
+  if (p === '/api/wecom/status' && method === 'GET') return reply(res, wecomBot.botStatus());
+  if (p === '/api/wecom/users' && method === 'GET') {
+    return reply(res, { code: 0, message: '', data: wecomBot.listBotUsers() });
+  }
+  if (p === '/api/wecom/users' && method === 'POST') return reply(res, wecomBot.saveBotUser(body));
 
   // ---------------- 订单 / 物流 / 支出明细 ----------------
   if (p === '/api/orders' && method === 'GET') return reply(res, ord.listOrders(setId, q));
@@ -1364,4 +1406,11 @@ server.listen(PORT, HOST, () => {
   // 启动即清理过期会话，此后每小时一次
   try { const n = biz.pruneSessions(); if (n) console.log(`[auth] 清理过期会话 ${n} 条`); } catch { /* 首启无表时忽略 */ }
   setInterval(() => { try { biz.pruneSessions(); } catch { /* 忽略 */ } }, 3600000).unref();
+
+  // 企微缓存：断网重连自动补同步（隔离实例/回归环境不启动，避免干扰测试）
+  if (!process.env.ZD_DB_PATH && process.env.ZD_WECOM_WATCH !== '0') {
+    import('./wecom-watch.mjs')
+      .then(({ startWecomWatch }) => startWecomWatch({ setId: DEFAULT_SET_ID }))
+      .catch((e) => console.log(`[wecom-watch] 启动失败：${e.message}`));
+  }
 });

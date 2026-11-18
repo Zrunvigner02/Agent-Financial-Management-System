@@ -18,7 +18,8 @@ const parseSetId = (raw) => {
 
 /* ---------------- 认证 ---------------- */
 
-const SESSION_DAYS = 7;
+// 本地版：延长会话有效期，配合前端 localStorage 实现长期免登录（默认 3650 天）
+const SESSION_DAYS = Number(process.env.SESSION_DAYS || 3650);
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
 const USERNAME_RE = /^[A-Za-z0-9_\u4e00-\u9fa5]{3,20}$/;
@@ -662,11 +663,12 @@ export function deleteVoucher(setId, id) {
 
 /* ---------------- 账簿 / 看板 ---------------- */
 
-function periodFigures(setId, period) {
+function periodFigures(setId, period, { includeDraft = true } = {}) {
+  const statusCond = includeDraft ? "v.status != 'void'" : "v.status IN ('reviewed','posted')";
   const rows = all(
     `SELECT e.subject_code, SUM(e.debit) AS debit, SUM(e.credit) AS credit
      FROM voucher_entries e JOIN vouchers v ON v.id = e.voucher_id
-     WHERE v.set_id = ? AND v.period = ? AND v.status != 'void'
+     WHERE v.set_id = ? AND v.period = ? AND ${statusCond}
      GROUP BY e.subject_code`, setId, period);
   const map = new Map();
   for (const r of rows) map.set(r.subject_code, { debit: r.debit || 0, credit: r.credit || 0 });
@@ -714,7 +716,8 @@ export function dashboardOverview(setId, period) {
   const p = period || new Date().toISOString().slice(0, 7);
   base.period = p;
   base.found = true;
-  const figures = periodFigures(setId, p);
+  // 看板口径：只统计已审核/已记账凭证；草稿保留在库里但不进入看板显示
+  const figures = periodFigures(setId, p, { includeDraft: false });
   let revenue = 0, cost = 0, expense = 0, capital = 0, ar = 0, ap = 0;
   for (const [code, f] of figures) {
     const net = f.debit - f.credit;
@@ -749,7 +752,8 @@ export function dashboardOverview(setId, period) {
 
 // 按本地凭证分录汇总各业务口径（供看板分项接口复用）
 export function dashboardMetrics(setId, period) {
-  const figures = periodFigures(setId, period);
+  // 看板分项同样只统计已审核/已记账凭证（草稿不入看板）
+  const figures = periodFigures(setId, period, { includeDraft: false });
   const m = { revenue: 0, cost: 0, expense: 0, profit: 0, capital: 0, ar: 0, ap: 0, tax: 0 };
   for (const [code, f] of figures) {
     const net = f.debit - f.credit;
@@ -1007,12 +1011,12 @@ export function deleteAgentSession(setId, id) {
 }
 
 export function agentMessages(sessionId) {
-  return ok(all('SELECT role, content, created_at FROM agent_messages WHERE session_id = ? ORDER BY id', sessionId));
+  return ok(all('SELECT role, content, created_at, COALESCE(sender, \'\') AS sender FROM agent_messages WHERE session_id = ? ORDER BY id', sessionId));
 }
 
-export function saveAgentMessage(sessionId, role, content) {
-  run('INSERT INTO agent_messages (session_id, role, content, created_at) VALUES (?, ?, ?, ?)',
-    sessionId, role, content, now());
+export function saveAgentMessage(sessionId, role, content, sender = '') {
+  run('INSERT INTO agent_messages (session_id, role, content, created_at, sender) VALUES (?, ?, ?, ?, ?)',
+    sessionId, role, content, now(), String(sender || ''));
 }
 
 /**

@@ -144,6 +144,78 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 本地自动登录：读取 .local/local-admin.txt 的账号密码，向本地后端换取会话，
+  // 供前端在无 localStorage 登录态时静默写入，实现打开即用、免手动输入账号密码。
+  if (u.pathname === '/__local/auto-login' && req.method === 'POST') {
+    let username = '', password = '';
+    try {
+      const txt = fs.readFileSync(path.join(ROOT, '.local/local-admin.txt'), 'utf8');
+      for (const line of txt.split(/\r?\n/)) {
+        if (line.startsWith('username=')) username = line.slice('username='.length).trim();
+        if (line.startsWith('password=')) password = line.slice('password='.length).trim();
+      }
+    } catch { /* 无凭据文件则忽略 */ }
+    const origin = LOCAL_API || `http://127.0.0.1:8000`;
+    if (!username || !password || !origin) {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ code: 1, message: 'no local credentials' }));
+      return;
+    }
+    const body = JSON.stringify({ username, password });
+    const lr = http.request(origin + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
+      timeout: 10000,
+    }, (up) => {
+      let buf = '';
+      up.on('data', (c) => { buf += c; });
+      up.on('end', () => {
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        res.end(buf || JSON.stringify({ code: 1, message: 'empty login response' }));
+      });
+    });
+    lr.on('error', (e) => {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ code: 1, message: e.message }));
+    });
+    lr.end(body);
+    return;
+  }
+
+  // 改密成功后同步本地自动登录凭据，避免下次打开页面仍用旧密码登录失败。
+  if (u.pathname === '/__local/sync-credentials' && req.method === 'POST') {
+    let raw = '';
+    req.on('data', (c) => { raw += c; });
+    req.on('end', () => {
+      let password = '';
+      try { password = (JSON.parse(raw || '{}').password || '').toString(); } catch { /* ignore */ }
+      const result = { code: 0, updated: [] };
+      if (password) {
+        // 更新 .local/local-admin.txt（保留 username 行）
+        try {
+          const p = path.join(ROOT, '.local/local-admin.txt');
+          let user = 'admin';
+          for (const line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
+            if (line.startsWith('username=')) user = line.slice('username='.length).trim();
+          }
+          fs.writeFileSync(p, `username=${user}\npassword=${password}\n`, 'utf8');
+          result.updated.push('local-admin.txt');
+        } catch (e) { result.code = 1; result.message = e.message; }
+        // 更新 .local/desktop-credentials.json（Electron 桌面壳用）
+        try {
+          const p = path.join(ROOT, '.local/desktop-credentials.json');
+          const cred = JSON.parse(fs.readFileSync(p, 'utf8'));
+          cred.password = password;
+          fs.writeFileSync(p, JSON.stringify(cred, null, 2), 'utf8');
+          result.updated.push('desktop-credentials.json');
+        } catch { /* 桌面凭据文件可不存在，忽略 */ }
+      }
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    });
+    return;
+  }
+
   if (isProxied(u.pathname)) return proxy(req, res, u);
   serveStatic(req, res, u);
 });

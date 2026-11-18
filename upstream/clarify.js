@@ -11,7 +11,7 @@
 
   var VERSION = '2.2';
   var KEY = 'zd_clarify_enabled';
-  var enabled = localStorage.getItem(KEY) !== '0';
+  var enabled = localStorage.getItem(KEY) === '1';
   var pending = null;
   var finalPayload = null;
   var lastSessionId = '';

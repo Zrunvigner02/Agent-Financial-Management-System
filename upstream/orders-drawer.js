@@ -12,8 +12,8 @@
   window.__zdOrdersDrawer = true;
 
   const API = location.origin;
-  const token = () => sessionStorage.getItem('jl_token') || '';
-  const setId = () => sessionStorage.getItem('jl_set_id') || '85';
+  const token = () => localStorage.getItem('jl_token') || sessionStorage.getItem('jl_token') || '';
+  const setId = () => localStorage.getItem('jl_set_id') || sessionStorage.getItem('jl_set_id') || '85';
   const period = () => new Date().toLocaleDateString('sv-SE').slice(0, 7);
   const money = (v) => Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -25,7 +25,7 @@
   .zd-od{position:fixed;left:12px;bottom:70px;z-index:9997;font:13px/1.55 "Microsoft YaHei",system-ui,sans-serif;color:#1f2430}
   .zd-od *{box-sizing:border-box}
   .zd-od-pill{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e3e7ef;border-radius:12px;padding:8px 12px;box-shadow:0 6px 20px rgba(20,30,60,.12);cursor:pointer;white-space:nowrap}
-  .zd-od-pill b{color:#1f6feb}
+  .zd-od-pill b{color:#1F5E4C}
   .zd-od-pill span.k{color:#8a90a2;font-size:12px}
   .zd-od-mask{position:fixed;inset:0;background:rgba(16,22,36,.28);z-index:9997}
   .zd-od-drawer{position:fixed;top:0;right:0;bottom:0;width:440px;max-width:92vw;background:#fff;z-index:9998;box-shadow:-12px 0 40px rgba(16,22,36,.18);display:flex;flex-direction:column}
@@ -34,7 +34,7 @@
   .zd-od-x{cursor:pointer;color:#98a0b0;font-size:18px;padding:0 4px}
   .zd-od-tabs{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid #eef1f6}
   .zd-od-tab{padding:5px 12px;border-radius:999px;background:#f4f6fa;color:#5b6273;cursor:pointer;font-size:12px}
-  .zd-od-tab.on{background:#1f6feb;color:#fff}
+  .zd-od-tab.on{background:#1F5E4C;color:#fff}
   .zd-od-body{flex:1;overflow:auto;padding:10px 0}
   .zd-od-row{padding:10px 16px;border-bottom:1px solid #f4f6fa;cursor:pointer}
   .zd-od-row:hover{background:#f8fafd}
@@ -55,17 +55,18 @@
   .zd-od-empty{padding:26px 16px;color:#8a90a2;font-size:12px;text-align:center;line-height:1.8}
   .zd-od-foot{padding:10px 16px;border-top:1px solid #eef1f6;display:flex;gap:8px}
   .zd-od-foot button{flex:1;border:1px solid #e3e7ef;background:#fff;border-radius:8px;padding:7px 0;font-size:12px;cursor:pointer;color:#3a4152}
-  .zd-od-foot button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
-  .zd-od-back{color:#1f6feb;cursor:pointer;font-size:12px;padding:8px 16px;display:inline-block}
+  .zd-od-foot button.primary{background:#1F5E4C;border-color:#1F5E4C;color:#fff}
+  .zd-od-back{color:#1F5E4C;cursor:pointer;font-size:12px;padding:8px 16px;display:inline-block}
   `;
 
   const style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
 
+  const SIDEBAR = !!window.__ZD_SIDEBAR_MODE;
   const pill = document.createElement('div');
   pill.className = 'zd-od';
-  document.body.appendChild(pill);
+  if (!SIDEBAR) document.body.appendChild(pill);
 
   let sum = null;
   let mask = null;
@@ -96,6 +97,7 @@
   }
 
   function renderPill() {
+    if (SIDEBAR) { pill.innerHTML = ''; return; }
     if (!sum) {
       pill.innerHTML = '<div class="zd-od-pill" data-act="open"><span>订单</span><span class="k">加载中…</span></div>';
     } else {
@@ -242,6 +244,9 @@
       });
     });
   }
+
+  // 侧栏入口：外部调用即可打开订单抽屉（不再依赖左下浮标）
+  window.__zdOpenOrders = (t) => open(t || 'orders');
 
   renderPill();
   loadSummary();

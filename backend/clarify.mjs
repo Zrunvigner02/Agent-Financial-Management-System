@@ -170,7 +170,7 @@ function prefEnabled(sessionId) {
   if (s) return s.enabled === 1;
   const g = get('SELECT enabled FROM agent_clarify_prefs WHERE scope = ?', 'global');
   if (g) return g.enabled === 1;
-  return true;
+  return false;
 }
 
 function setPref(scope, enabled) {
@@ -183,7 +183,7 @@ export function prefsOf(sessionId = '') {
   const g = get('SELECT enabled FROM agent_clarify_prefs WHERE scope = ?', 'global');
   const s = get('SELECT enabled FROM agent_clarify_prefs WHERE scope = ?', `session:${sessionId}`);
   return {
-    global: g ? g.enabled === 1 : true,
+    global: g ? g.enabled === 1 : false,
     session: s ? s.enabled === 1 : null,
     enabled: prefEnabled(sessionId),
   };

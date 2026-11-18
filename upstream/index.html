@@ -6,6 +6,9 @@
     <title>妆点管账 · 本地版</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- 本地版免登录：在 SPA bundle 之前同步注入登录态到 localStorage。
+         仅在本地后端可用时生效；失败则静默跳过，回退到手动登录页。 -->
+    <script src="/autologin.js"></script>
     <script type="module" crossorigin src="/assets/index-CfiOBNy5.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DBO0WYGM.css">
   </head>
@@ -13,12 +16,14 @@
     <div id="app"></div>
     <style>
       /* 侧栏「文件格式转换」入口：独立页面，不侵入 SPA 路由与 minified bundle */
-      .zd-convert-item { display:flex; align-items:center; gap:12px; height:50px; padding:0 20px;
-        color:#4a2438; font-size:14px; text-decoration:none; cursor:pointer; white-space:nowrap;
+      .zd-convert-item { display:flex; align-items:center; gap:8px; height:34px; line-height:34px;
+        margin-bottom:2px; padding:0 9px; border-radius:var(--r,8px); box-sizing:border-box;
+        color:var(--ink-2,#3D4F49); font-size:12.5px; text-decoration:none; cursor:pointer; white-space:nowrap;
         transition:background .2s,color .2s; }
-      .zd-convert-item:hover { background:#fce9f2; color:#742a54; }
-      .zd-convert-item svg { width:18px; height:18px; flex:none; stroke:#9b7189; }
-      .zd-convert-item:hover svg { stroke:#d870a0; }
+      .zd-convert-item:hover { background:#17241f0d; color:var(--ink,#17241F); }
+      .zd-convert-item svg { width:16px; height:16px; flex:none; fill:none; stroke:#6E7B76;
+        stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+      .zd-convert-item:hover svg { stroke:#17241F; }
       .zd-convert-item.zd-collapsed { padding:0; justify-content:center; }
       .zd-convert-item.zd-collapsed .zd-txt { display:none; }
     </style>
@@ -53,7 +58,66 @@
           .observe(document.body, { childList: true, subtree: true });
       })();
     </script>
+    <!-- 侧栏模式：订单 / 固定支出改为左侧菜单入口，不再显示左下角浮标 -->
+    <script>window.__ZD_SIDEBAR_MODE = true;</script>
     <script src="/fixed-cost-panel.js" defer></script>
     <script src="/orders-drawer.js" defer></script>
+    <!-- 销售看板（独立统计口径，顶部 Tab 并列，整页切换） -->
+    <script src="/sales-board.js" defer></script>
+    <!-- 报表中心（财务/销售双口径，多时间维度） -->
+    <script src="/reports.js" defer></script>
+    <!-- 智能体聊天媒体：报表/图片可点击打开 -->
+    <script src="/agent-media.js" defer></script>
+    <!-- 订单 / 固定支出：左侧菜单入口 -->
+    <script>
+      (function () {
+        var ICON_ORDER = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12l1 5H5l1-5z"/><path d="M5 7v13a2 2 0 002 2h10a2 2 0 002-2V7"/><path d="M9 11h6"/></svg>';
+        var ICON_COST = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="17" cy="14.5" r="1.2"/></svg>';
+        var ICON_REPORT = '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
+        function mk(key, label, icon, handler) {
+          var a = document.createElement('a');
+          a.className = 'zd-convert-item';
+          a.setAttribute('data-zd-' + key, '1');
+          a.href = 'javascript:void(0)';
+          a.title = label;
+          a.innerHTML = icon + '<span class="zd-txt">' + label + '</span>';
+          a.addEventListener('click', function (e) { e.preventDefault(); if (typeof window[handler] === 'function') window[handler](); });
+          return a;
+        }
+        function mkReport() {
+          var a = document.createElement('a');
+          a.className = 'zd-convert-item';
+          a.setAttribute('data-zd-report', '1');
+          a.href = 'javascript:void(0)';
+          a.title = '报表';
+          a.innerHTML = ICON_REPORT + '<span class="zd-txt">报表</span>';
+          a.addEventListener('click', function (e) { e.preventDefault(); if (typeof window.__zdOpenReports === 'function') window.__zdOpenReports('finance', 'month'); });
+          return a;
+        }
+        function mount() {
+          var menu = document.querySelector('.app-menu');
+          if (!menu) return false;
+          if (!menu.querySelector('[data-zd-order]')) menu.appendChild(mk('order', '订单', ICON_ORDER, '__zdOpenOrders'));
+          if (!menu.querySelector('[data-zd-fixed]')) menu.appendChild(mk('fixed', '固定支出', ICON_COST, '__zdOpenFixedCost'));
+          if (!menu.querySelector('[data-zd-report]')) menu.appendChild(mkReport());
+          // 顺序：订单 → 固定支出 → 报表 → 文件格式转换
+          var order = menu.querySelector('[data-zd-order]');
+          var fixed = menu.querySelector('[data-zd-fixed]');
+          var report = menu.querySelector('[data-zd-report]');
+          var conv = menu.querySelector('[data-zd-convert]');
+          if (order && fixed && order.nextElementSibling !== fixed) menu.insertBefore(fixed, order.nextElementSibling || null);
+          if (fixed && report && fixed.nextElementSibling !== report) menu.insertBefore(report, fixed.nextElementSibling || null);
+          if (report && conv && report.nextElementSibling !== conv) menu.insertBefore(conv, report.nextElementSibling || null);
+          var collapsed = menu.classList.contains('el-menu--collapse');
+          menu.querySelectorAll('[data-zd-order],[data-zd-fixed]').forEach(function (a) { a.classList.toggle('zd-collapsed', collapsed); });
+          return true;
+        }
+        var t = setInterval(function () { if (mount()) clearInterval(t); }, 200);
+        setTimeout(function () { clearInterval(t); }, 15000);
+        new MutationObserver(function () { mount(); }).observe(document.body, { childList: true, subtree: true });
+      })();
+    </script>
+    <!-- 用户菜单增强：个人中心 / 修改密码（可靠性优化，可独立移除） -->
+    <script src="/usermenu-enhance.js" defer></script>
   </body>
 </html>

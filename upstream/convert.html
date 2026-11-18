@@ -6,53 +6,53 @@
 <title>文件格式转换 · 妆点管账</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <style>
-  :root { --plum:#742a54; --rose:#d870a0; --pale:#fff5f9; --line:#f0d9e5; --muted:#9b7189; }
+  :root { --plum:#1F5E4C; --rose:#46B391; --pale:#F3F1EB; --line:#E2DFD7; --muted:#6E7B76; }
   * { box-sizing:border-box; }
-  body { margin:0; padding:28px 32px 48px; background:var(--pale); color:#4a2438;
+  body { margin:0; padding:28px 32px 48px; background:var(--pale); color:#17241F;
          font-family:"Microsoft YaHei","Segoe UI",sans-serif; }
   header { display:flex; align-items:center; gap:16px; max-width:1080px; margin:0 auto 26px; }
   .logo { width:52px; height:52px; border-radius:15px; flex:none;
-          background:linear-gradient(135deg,#fccddc,#742a54); color:#fff; font-size:29px;
+          background:linear-gradient(135deg,#8FD0BF,#1F5E4C); color:#fff; font-size:29px;
           font-weight:700; display:flex; align-items:center; justify-content:center;
-          box-shadow:0 8px 22px rgba(116,42,84,.22); }
+          box-shadow:0 8px 22px rgba(31,94,76,.22); }
   h1 { font-size:23px; margin:0; letter-spacing:2px; }
   .sub { color:var(--muted); font-size:13px; margin-top:5px; }
   .back { margin-left:auto; color:var(--plum); text-decoration:none; font-size:13px;
           border:1px solid var(--line); background:#fff; padding:9px 16px; border-radius:99px; }
-  .back:hover { background:#fce9f2; }
+  .back:hover { background:#E8F6EF; }
   .wrap { max-width:1080px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
   .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:22px 24px;
-          box-shadow:0 5px 22px rgba(116,42,84,.06); }
+          box-shadow:0 5px 22px rgba(31,94,76,.06); }
   .card.full { grid-column:1 / -1; }
   h2 { font-size:15px; margin:0 0 18px; color:var(--plum); letter-spacing:1px;
        display:flex; align-items:center; gap:8px; }
   h2::before { content:""; width:4px; height:15px; border-radius:4px; background:var(--rose); }
   label { display:block; font-size:12px; color:var(--muted); margin:0 0 6px; letter-spacing:.5px; }
   select, input[type=file] { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
-          background:#fffbfd; color:#4a2438; font-size:14px; font-family:inherit; outline:none; }
-  select:focus { border-color:var(--rose); box-shadow:0 0 0 3px rgba(216,112,160,.13); }
+          background:#FAF8F2; color:#17241F; font-size:14px; font-family:inherit; outline:none; }
+  select:focus { border-color:var(--rose); box-shadow:0 0 0 3px rgba(70,179,145,.15); }
   .field { margin-bottom:16px; }
   .drop { border:1px dashed var(--rose); border-radius:12px; padding:22px 14px; text-align:center;
-          background:#fffbfd; color:var(--muted); font-size:13px; line-height:1.9; cursor:pointer; }
-  .drop:hover { background:#fce9f2; }
+          background:#FAF8F2; color:var(--muted); font-size:13px; line-height:1.9; cursor:pointer; }
+  .drop:hover { background:#E8F6EF; }
   .drop b { color:var(--plum); }
   .btn { width:100%; padding:11px; border:0; border-radius:9px; cursor:pointer;
-         background:linear-gradient(120deg,#d870a0,#742a54); color:#fff; font-size:14px;
+         background:linear-gradient(120deg,#46B391,#1F5E4C); color:#fff; font-size:14px;
          letter-spacing:2px; font-family:inherit; }
   .btn:hover { filter:brightness(1.06); }
   .btn.ghost { background:#fff; color:var(--plum); border:1px solid var(--line); }
   .btn:disabled { opacity:.55; cursor:not-allowed; }
   .pill { display:inline-block; padding:3px 10px; border-radius:99px; font-size:11px;
-          background:#fbe7f0; color:var(--plum); margin:0 6px 6px 0; }
-  .pill.gray { background:#f4f0f2; color:#8b7a84; }
+          background:#E8F6EF; color:var(--plum); margin:0 6px 6px 0; }
+  .pill.gray { background:#EFECE4; color:#6E7B76; }
   .status { margin-top:14px; padding:11px 14px; border-radius:9px; font-size:13px; line-height:1.8;
-            background:#fff3f8; border:1px solid var(--line); color:var(--muted); word-break:break-all; }
+            background:#FAF8F2; border:1px solid var(--line); color:var(--muted); word-break:break-all; }
   .status.err { background:#fff0f0; border-color:#f3c9c9; color:#a63c3c; }
   .status.ok { background:#f0faf3; border-color:#c9e8d2; color:#2e7d4f; }
   .status a { color:var(--plum); font-weight:600; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th { text-align:left; color:var(--muted); font-weight:500; padding:8px 10px; border-bottom:1px solid var(--line); }
-  td { padding:9px 10px; border-bottom:1px solid #faf0f5; }
+  td { padding:9px 10px; border-bottom:1px solid #EFECE4; }
   .act { color:var(--plum); cursor:pointer; text-decoration:underline; }
   .empty { color:var(--muted); font-size:13px; padding:16px 0; }
   .note { font-size:12px; color:var(--muted); line-height:1.9; margin-top:12px; }
@@ -108,8 +108,9 @@
 
 <script>
 const $ = (s) => document.querySelector(s);
-const token = sessionStorage.getItem('jl_token') || '';
-const H = { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+const token = localStorage.getItem('jl_token') || sessionStorage.getItem('jl_token') || '';
+const setId = localStorage.getItem('jl_set_id') || sessionStorage.getItem('jl_set_id') || '';
+const H = { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(setId ? { 'x-set-id': setId } : {}) };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (url, opts = {}) => {

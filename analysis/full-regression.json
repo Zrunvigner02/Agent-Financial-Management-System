@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-12T07:51:54.253Z",
+  "at": "2026-11-17T10:02:25.846Z",
   "port": 8002,
   "isolated": true,
   "summary": "117 PASS / 0 FAIL",
@@ -76,7 +76,7 @@
       "group": "B · 认证 / 账户 / 角色",
       "name": "账户列表 / 创建 / 更新 / 删除闭环",
       "pass": true,
-      "detail": "id=9 upd=0 confirm=428 del=0"
+      "detail": "id=5 upd=0 confirm=428 del=0"
     },
     {
       "group": "B · 认证 / 账户 / 角色",
@@ -88,7 +88,7 @@
       "group": "B · 认证 / 账户 / 角色",
       "name": "角色 创建 / 菜单权限 / 更新 / 删除闭环",
       "pass": true,
-      "detail": "id=70 menus=0 read=0 del=0"
+      "detail": "id=66 menus=0 read=0 del=0"
     },
     {
       "group": "C · 账套与科目",
@@ -214,7 +214,7 @@
       "group": "G · 智能体配置 / 技能 / 会话",
       "name": "模型配置读取 / 保存 / 重置",
       "pass": true,
-      "detail": "configured=true model=dsv4.1f1017 put=0"
+      "detail": "configured=true model=deepseek-chat put=0"
     },
     {
       "group": "G · 智能体配置 / 技能 / 会话",
@@ -232,7 +232,7 @@
       "group": "G · 智能体配置 / 技能 / 会话",
       "name": "自定义提示词技能 CRUD",
       "pass": true,
-      "detail": "id=6 del=0"
+      "detail": "id=1 del=0"
     },
     {
       "group": "G · 智能体配置 / 技能 / 会话",
@@ -244,7 +244,7 @@
       "group": "G · 智能体配置 / 技能 / 会话",
       "name": "已创建的会话可重命名并删除",
       "pass": true,
-      "detail": "sid=1ef057c37037380eef675313 put=0 del=0"
+      "detail": "sid=25aa4af913ab11b91f3d6a56 put=0 del=0"
     },
     {
       "group": "G · 智能体配置 / 技能 / 会话",
@@ -268,7 +268,7 @@
       "group": "H · 意图追问工具",
       "name": "偏好开关 持久化 / 关闭 / 恢复",
       "pass": true,
-      "detail": "false → false → true"
+      "detail": "true → false → true"
     },
     {
       "group": "H · 意图追问工具",
@@ -286,19 +286,19 @@
       "group": "H · 意图追问工具",
       "name": "旧页面（capable=false）不会只发文字无卡片",
       "pass": true,
-      "detail": "session_title,content,content,content…"
+      "detail": "session_title,tool,tool,tool…"
     },
     {
       "group": "H · 意图追问工具",
       "name": "「不用反问了」停用后不再追问且可恢复",
       "pass": true,
-      "detail": "off=session_title,content,clarify,done after=content,content,content on=content,clarify,done"
+      "detail": "off=session_title,content,clarify,done after=tool,tool,tool on=content,clarify,done"
     },
     {
       "group": "H2 · 会话自动命名",
       "name": "前端先建会话 → 首条消息发 session_title 且列表同步改名",
       "pass": true,
-      "detail": "sid=a93b02871ea9539c6ef78312 event={\"session_id\":\"a93b02871ea9539c6ef78312\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
+      "detail": "sid=5e59787628a2dd601cb07cca event={\"session_id\":\"5e59787628a2dd601cb07cca\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
     },
     {
       "group": "H2 · 会话自动命名",
@@ -310,13 +310,13 @@
       "group": "H2 · 会话自动命名",
       "name": "追问选项消息不命名，真实问题才命名",
       "pass": true,
-      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1794469908832\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
+      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1794909737866\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
     },
     {
       "group": "H2 · 会话自动命名",
       "name": "auto-title 精修端点：自动生成可精修 / 人工名称不动",
       "pass": true,
-      "detail": "a={\"session_id\":\"f8cc7b9e2d75205c60e52a61\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"f8cc7b9e2d75205c60e52a61\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
+      "detail": "a={\"session_id\":\"383cc4ad911e74bb816f5262\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"383cc4ad911e74bb816f5262\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
     },
     {
       "group": "I · 全格式附件",
@@ -436,7 +436,7 @@
       "group": "J · 报表导出与格式转换",
       "name": "导出文件列表与下载",
       "pass": true,
-      "detail": "files=5"
+      "detail": "files=11"
     },
     {
       "group": "J · 报表导出与格式转换",
@@ -514,7 +514,7 @@
       "group": "K · MCP / WorkBuddy 对接",
       "name": "tools/list 工具齐备且均带 schema 与描述",
       "pass": true,
-      "detail": "count=23 allHaveSchema=true missing=none"
+      "detail": "count=57 allHaveSchema=true missing=none"
     },
     {
       "group": "K · MCP / WorkBuddy 对接",
@@ -682,7 +682,7 @@
       "group": "L · SSE 契约与安全边界",
       "name": "chat 标准 SSE：event 行 + content + done 收尾",
       "pass": true,
-      "detail": "events=115 kinds=session_title,content,done"
+      "detail": "events=195 kinds=session_title,content,done"
     },
     {
       "group": "L · SSE 契约与安全边界",
@@ -709,5 +709,5 @@
       "detail": "alive"
     }
   ],
-  "child_log_tail": "(node:25192) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n\n[child exited null]"
+  "child_log_tail": "(node:30356) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n[auth] 注册模式 REGISTER_MODE=open（open=任何来源 / local=仅本机 / closed=关闭）\n[2026-11-17 10:02:00] [backend-watch] 守护已启动：探测 20s，重连后等 30s 同步，240s 后二次补同步\n[2026-11-17 10:02:23] [backend-watch] 网络初检：在线\n[2026-11-17 10:02:23] [backend-watch] 开始补同步（启动）\n\n[child exited null]"
 }

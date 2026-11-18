@@ -1,13 +1,13 @@
 {
   "name": "jinli-finance-local",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node tools/start-all.mjs",
     "start": "node --env-file=.env server.mjs",
     "backend": "node --env-file=.env backend/index.mjs",
-    "check": "node --check server.mjs && node --check backend/index.mjs && node --check backend/biz.mjs && node --check backend/store.mjs && node --check backend/export.mjs && node --check backend/llm.mjs && node --check backend/skills.mjs && node --check backend/clarify.mjs && node --check backend/attachment.mjs && node --check backend/data-audit.mjs && node --check backend/session-title.mjs && node --check upstream/clarify.js && node --check upstream/assets/AgentWorkspace-CkfAYitb.js && node --check tools/mcp-stdio-bridge.mjs && node --check tools/local-smoke.mjs && node --check tools/desktop-verify.mjs && node --check tools/full-regression.mjs && node --check tools/data-audit.mjs && node --check tools/cleanup-test-data.mjs && node --check tools/isolated-run.mjs && node --check tools/test-session-title.mjs && node --check backend/reports.mjs && node --check tools/test-reports.mjs && node --check tools/shoot-readme.mjs && node --check tools/claw-sync.mjs && node --check tools/desktop-pull.mjs && node --check tools/change-gate.mjs && node --check tools/account-cli.mjs && node --check tools/test-accounts.mjs && node --check tools/make-monthly-pack.mjs && node --check tools/make-ytd-pack.mjs && node --check backend/recurring.mjs && node --check tools/test-recurring.mjs && node --check backend/tags.mjs && node --check upstream/fixed-cost-panel.js && node --check tools/test-attachments.mjs && node --check tools/prune-attachments.mjs && node --check backend/xls.mjs && node --check backend/ocr.mjs && node --check backend/fileops.mjs && node --check tools/test-fileops.mjs && node --check tools/ocr-doctor.mjs && node --check backend/orders.mjs && node --check tools/test-orders.mjs && node --check upstream/orders-drawer.js && node --check backend/toolrouter.mjs && node --check tools/test-toolrouter.mjs && node --check backend/enterprise.mjs && node --check tools/test-enterprise.mjs && node --check tools/xls-read.mjs && node --check tools/sales-import.mjs && node --check tools/make-sales-report.mjs",
+    "check": "node --check server.mjs && node --check backend/index.mjs && node --check backend/biz.mjs && node --check backend/store.mjs && node --check backend/export.mjs && node --check backend/llm.mjs && node --check backend/skills.mjs && node --check backend/clarify.mjs && node --check backend/attachment.mjs && node --check backend/data-audit.mjs && node --check backend/session-title.mjs && node --check upstream/clarify.js && node --check upstream/assets/AgentWorkspace-CkfAYitb.js && node --check tools/mcp-stdio-bridge.mjs && node --check tools/local-smoke.mjs && node --check tools/desktop-verify.mjs && node --check tools/full-regression.mjs && node --check tools/data-audit.mjs && node --check tools/cleanup-test-data.mjs && node --check tools/isolated-run.mjs && node --check tools/test-session-title.mjs && node --check backend/reports.mjs && node --check tools/test-reports.mjs && node --check tools/shoot-readme.mjs && node --check tools/claw-sync.mjs && node --check tools/desktop-pull.mjs && node --check tools/change-gate.mjs && node --check tools/account-cli.mjs && node --check tools/test-accounts.mjs && node --check tools/make-monthly-pack.mjs && node --check tools/make-ytd-pack.mjs && node --check backend/recurring.mjs && node --check tools/test-recurring.mjs && node --check backend/tags.mjs && node --check upstream/fixed-cost-panel.js && node --check tools/test-attachments.mjs && node --check tools/prune-attachments.mjs && node --check backend/xls.mjs && node --check backend/ocr.mjs && node --check backend/fileops.mjs && node --check tools/test-fileops.mjs && node --check tools/ocr-doctor.mjs && node --check backend/orders.mjs && node --check tools/test-orders.mjs && node --check upstream/orders-drawer.js && node --check backend/toolrouter.mjs && node --check tools/test-toolrouter.mjs && node --check backend/enterprise.mjs && node --check tools/test-enterprise.mjs && node --check tools/xls-read.mjs && node --check tools/sales-import.mjs && node --check tools/make-sales-report.mjs && node --check backend/wecom.mjs && node --check tools/wecom-sync.mjs && node --check tools/test-wecom.mjs && node --check backend/finance.mjs && node --check tools/finance-pnl.mjs && node --check tools/test-finance.mjs && node --check tools/wecom-watch.mjs && node --check backend/wecom-watch.mjs && node --check backend/wecom-bot.mjs && node --check tools/test-wecom-bot.mjs && node --check tools/wecom-digest.mjs",
     "smoke": "node tools/isolated-run.mjs --with-backend --scripts tools/local-smoke.mjs,tools/verify-dashboard.mjs",
     "regression": "node tools/full-regression.mjs",
     "test:isolated": "node tools/isolated-run.mjs",
@@ -39,7 +39,21 @@
     "test:orders": "node tools/test-orders.mjs",
     "test:router": "node tools/test-toolrouter.mjs",
     "test:enterprise": "node tools/test-enterprise.mjs",
+    "test:finance": "node tools/test-finance.mjs",
     "sales:import": "node tools/sales-import.mjs",
-    "sales:report": "node tools/make-sales-report.mjs"
+    "sales:report": "node tools/make-sales-report.mjs",
+    "wecom:scan": "node tools/wecom-sync.mjs",
+    "wecom:sync": "node tools/wecom-sync.mjs --apply",
+    "wecom:verify": "node tools/wecom-sync.mjs --verify",
+    "test:wecom": "node tools/test-wecom.mjs",
+    "wecom:watch": "node tools/wecom-watch.mjs",
+    "wecom:watch:once": "node tools/wecom-watch.mjs --once",
+    "finance:pnl": "node tools/finance-pnl.mjs",
+    "finance:import": "node tools/finance-pnl.mjs --import",
+    "finance:check": "node tools/finance-pnl.mjs --check",
+    "finance:gaps": "node tools/finance-pnl.mjs --gaps",
+    "test:wecom-bot": "node tools/test-wecom-bot.mjs",
+    "wecom:digest": "node tools/wecom-digest.mjs",
+    "wecom:digest:draft": "node tools/wecom-digest.mjs --no-send"
   }
 }

@@ -9,7 +9,7 @@ from ctypes import wintypes
 
 DESK = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(DESK)
-TARGET = r'D:\tools\Python311\pythonw.exe'
+TARGET = r'C:\Users\zylspc\.workbuddy\binaries\python\versions\3.13.12\pythonw.exe'
 ARGS = '"' + os.path.join(DESK, 'launcher.pyw') + '"'
 WORKDIR = DESK
 # 用独立文件名的 ico：避开 Explorer 对 desktop/icon.ico 的旧图标缓存（2026-11-11）

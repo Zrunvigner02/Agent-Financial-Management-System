@@ -8,8 +8,8 @@
   window.__zdFixedCostPanel = true;
 
   const API = location.origin;
-  const token = () => sessionStorage.getItem('jl_token') || '';
-  const setId = () => sessionStorage.getItem('jl_set_id') || '85';
+  const token = () => localStorage.getItem('jl_token') || sessionStorage.getItem('jl_token') || '';
+  const setId = () => localStorage.getItem('jl_set_id') || sessionStorage.getItem('jl_set_id') || '85';
   const currentPeriod = () => new Date().toLocaleDateString('sv-SE').slice(0, 7);
 
   const money = (v) => Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -18,7 +18,7 @@
   .zd-fc{position:fixed;left:12px;bottom:14px;z-index:9998;font:13px/1.5 "Microsoft YaHei",system-ui,sans-serif;color:#1f2430}
   .zd-fc *{box-sizing:border-box}
   .zd-fc-pill{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e3e7ef;border-radius:12px;padding:8px 12px;box-shadow:0 6px 20px rgba(20,30,60,.12);cursor:pointer;white-space:nowrap}
-  .zd-fc-pill b{color:#1f6feb;font-size:15px}
+  .zd-fc-pill b{color:#1F5E4C;font-size:15px}
   .zd-fc-dot{width:8px;height:8px;border-radius:50%;background:#c9ced9}
   .zd-fc-dot.warn{background:#f2994a}
   .zd-fc-dot.ok{background:#27ae60}
@@ -48,7 +48,7 @@
   .zd-fc-badge.settle{background:#eef7f6;color:#0f7c74;border-color:#cfe9e6}
   .zd-fc-foot{padding:8px 12px 12px;border-top:1px solid #eef1f6;display:flex;gap:8px}
   .zd-fc-foot button{flex:1;border:1px solid #e3e7ef;background:#fff;border-radius:8px;padding:6px 0;font-size:12px;cursor:pointer;color:#3a4152}
-  .zd-fc-foot button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+  .zd-fc-foot button.primary{background:#1F5E4C;border-color:#1F5E4C;color:#fff}
   .zd-fc-empty{padding:18px 14px;color:#8a90a2;font-size:12px;line-height:1.7}
   .zd-fc-row{cursor:pointer}
   .zd-fc-mask{position:fixed;inset:0;background:rgba(16,22,36,.3);z-index:9999}
@@ -64,6 +64,15 @@
   const style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
+
+  const SIDEBAR = !!window.__ZD_SIDEBAR_MODE;
+
+  if (SIDEBAR) {
+    const s2 = document.createElement('style');
+    s2.textContent = '.zd-fc.zd-fc-center{left:50% !important;bottom:auto !important;top:50% !important;transform:translate(-50%,-50%);z-index:10050}'
+      + '.zd-fc.zd-fc-center .zd-fc-pill{display:none}';
+    document.head.appendChild(s2);
+  }
 
   const root = document.createElement('div');
   root.className = 'zd-fc';
@@ -164,7 +173,11 @@
       <span style="color:#8a90a2">${p ? `${p.count} 项` : ''}</span>
     </div>`;
 
-    if (!state.open) { root.innerHTML = pill; bind(); return; }
+    root.classList.toggle('zd-fc-center', SIDEBAR && state.open);
+    if (!state.open) {
+      if (SIDEBAR) { root.innerHTML = ''; return; }
+      root.innerHTML = pill; bind(); return;
+    }
 
     root.innerHTML = `<div class="zd-fc-card">
       <div class="zd-fc-hd"><h4>固定支出<small>${currentPeriod()}</small></h4><span class="zd-fc-x" data-act="close">×</span></div>
@@ -276,4 +289,7 @@
 
   if (token()) load();
   window.addEventListener('storage', (e) => { if (e.key === 'jl_set_id') load(); });
+
+  // 侧栏入口：外部调用即可打开固定支出面板（不再依赖左下浮标）
+  window.__zdOpenFixedCost = () => { state.open = true; render(); if (token()) load(); };
 })();

@@ -1,0 +1,168 @@
+{
+  "_说明": "企业微信缓存接入配置。cacheRoot 指向企微本地缓存的 File 目录；persons 为老板指定的负责人白名单（按品牌）；series 为文件名→报表系列的识别规则。 wxworkRoot 存在时，会自动扫描其下每个账号的 Cache/File 与 Cache/Image，这样机器人账号（专号）与主人账号的报表都能收进来。",
+  "_限制": "企微 message.db / file.db 为加密库，缓存文件不带发送人标记，因此 persons 目前只用于品牌责任人标注与后续按人过滤，不能反查单个文件由谁发出。",
+  "setId": 85,
+  "source": "wecom",
+  "cacheRoot": "C:/Users/zylspc/Documents/WXWork/1688850408297131/Cache/File",
+  "cacheRoots": [
+    "C:/Users/zylspc/Documents/WXWork/1688850408297131/Cache/File",
+    "C:/Users/zylspc/Documents/WXWork/1688850408297131/Cache/Image"
+  ],
+  "archiveRoot": "data/wecom",
+  "archiveReports": true,
+  "reportExts": [
+    "xlsx",
+    "xls"
+  ],
+  "ledgerExts": [
+    "xlsx",
+    "xls",
+    "pdf",
+    "jpg",
+    "jpeg",
+    "png",
+    "docx",
+    "doc"
+  ],
+  "maxFileMB": 40,
+  "brands": {
+    "歌剧": [
+      "歌剧魅影",
+      "歌剧",
+      "Kryolan"
+    ],
+    "世家": [
+      "德国世家",
+      "世家",
+      "DH",
+      "drhauschka",
+      "Dr.Hauschka"
+    ],
+    "PF": [
+      "PF79",
+      "PF"
+    ]
+  },
+  "persons": [
+    {
+      "name": "刘志强",
+      "wxid": "1688857233690318",
+      "alias": "草莓花",
+      "brands": [
+        "世家",
+        "PF",
+        "歌剧"
+      ]
+    },
+    {
+      "name": "常安鹏",
+      "wxid": "1688856018851997",
+      "alias": "荷花",
+      "brands": [
+        "世家",
+        "PF",
+        "歌剧"
+      ]
+    },
+    {
+      "name": "金卓",
+      "wxid": "1688850408595398",
+      "alias": "Kat",
+      "brands": [
+        "世家",
+        "PF",
+        "歌剧"
+      ]
+    },
+    {
+      "name": "郭墨",
+      "wxid": "1688856135367065",
+      "alias": "韭菜花",
+      "brands": [
+        "世家",
+        "PF",
+        "歌剧"
+      ]
+    },
+    {
+      "name": "孟宪文",
+      "wxid": "1688856921977441",
+      "alias": "",
+      "brands": [
+        "PF",
+        "歌剧"
+      ]
+    },
+    {
+      "name": "赵金元",
+      "wxid": "1688857301609474",
+      "alias": "",
+      "brands": [
+        "歌剧"
+      ]
+    },
+    {
+      "name": "周新雨",
+      "wxid": "1688855808761688",
+      "alias": "",
+      "brands": [
+        "歌剧"
+      ]
+    }
+  ],
+  "series": [
+    {
+      "id": "tm_flagship_daily",
+      "label": "天猫歌剧魅影旗舰店日报",
+      "match": "歌剧魅影旗舰店日报数据",
+      "adapter": "tm_daily_single",
+      "dedupe": "snapshot",
+      "channel": "天猫歌剧魅影旗舰店",
+      "platform": "天猫",
+      "brand": "歌剧",
+      "exts": [
+        "xlsx"
+      ]
+    },
+    {
+      "id": "jd_pdd_daily",
+      "label": "京东/拼多多日更表（多工作表）",
+      "match": "京东多多销售日报表",
+      "adapter": "jd_pdd_sheets",
+      "dedupe": "snapshot",
+      "channel": "",
+      "platform": "",
+      "brand": "歌剧",
+      "exts": [
+        "xls",
+        "xlsx"
+      ]
+    },
+    {
+      "id": "xhs_kl_daily",
+      "label": "小红书店铺数据跟进",
+      "match": "小红书店铺KL数据跟进",
+      "adapter": "pending",
+      "dedupe": "snapshot",
+      "channel": "小红书歌剧魅影",
+      "platform": "小红书",
+      "brand": "歌剧",
+      "exts": [
+        "xlsx"
+      ]
+    },
+    {
+      "id": "dy_live_daily",
+      "label": "抖音直播间日报",
+      "match": "歌剧魅影抖音直播间日报表",
+      "adapter": "pending",
+      "channel": "抖音歌剧魅影自播",
+      "platform": "抖音",
+      "brand": "歌剧",
+      "exts": [
+        "xlsx"
+      ]
+    }
+  ],
+  "wxworkRoot": "C:/Users/zylspc/Documents/WXWork"
+}

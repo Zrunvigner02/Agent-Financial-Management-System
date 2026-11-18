@@ -137,7 +137,24 @@ function parseFile(file) {
   return out;
 }
 
+/* ---------------- 治标：从消息正文解析署名（企微 AIBot 不透传发送人） ---------------- */
+// 支持三种署名写法：  「张三：内容」 「张三: 内容」 「[张三] 内容」
+const SIGN_RE = /^([\u4e00-\u9fa5]{2,4}|[A-Za-z][A-Za-z0-9._-]{1,15})\s*[：:]\s*/;
+const BRACKET_RE = /^\[([^\]\n]{1,20})\]\s*/;
+
+function splitSigner(text) {
+  const raw = String(text || '');
+  const b = raw.match(BRACKET_RE);
+  if (b) return { sender: b[1].trim(), body: raw.slice(b[0].length).trim(), signed: true };
+  const m = raw.match(SIGN_RE);
+  // 排除「日期：」「金额：」「备注：」这类表头式前缀
+  const STOP = ['日期', '金额', '备注', '时间', '渠道', '店铺', '商品', '数量', '合计', '说明', '状态', '销售额', '退款'];
+  if (m && !STOP.includes(m[1])) return { sender: m[1].trim(), body: raw.slice(m[0].length).trim(), signed: true };
+  return { sender: '', body: raw, signed: false };
+}
+
 /* ---------------- 媒体：复制到前端可访问目录 ---------------- */
+
 function decorateMedia(text, day) {
   let out = String(text || '');
   const found = new Set();
@@ -241,9 +258,20 @@ function syncOnce() {
       const title = `企微助理 · ${dayTitle(e.date)}`;
       const r = insSession.run(sid, SET_ID, title, stamp(e.date));
       if (r.changes) made += 1;
-      const body = `[${pad(e.date.getHours())}:${pad(e.date.getMinutes())}] ${e.text}`;
+      const hhmm = `${pad(e.date.getHours())}:${pad(e.date.getMinutes())}`;
+      let body;
+      let sender;
+      if (e.role === 'user') {
+        // 治标：正文里带「姓名：」或「[姓名]」时解析出来，渲染成姓名徽标
+        const { sender: who, body: rest } = splitSigner(e.text);
+        sender = who || SENDER;
+        body = `[${sender}] ${hhmm} ${rest}`;
+      } else {
+        sender = '助手';
+        body = `${hhmm} ${e.text}`;
+      }
       const content = DRY ? body : decorateMedia(body, dayKey(e.date));
-      if (!DRY) insMsg.run(sid, e.role, content, stamp(e.date), e.role === 'user' ? SENDER : '助手');
+      if (!DRY) insMsg.run(sid, e.role, content, stamp(e.date), sender);
       insLog.run(e.key, sid, stamp(new Date()));
       wrote += 1;
     }

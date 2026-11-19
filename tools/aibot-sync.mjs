@@ -135,7 +135,7 @@ function parseFile(file) {
     const text = role === 'user' ? cleanUserText(rawText) : rawText;
     if (!text) continue;
     const ts = Number(o.timestamp) || Date.now();
-    out.push({ key: `${base}:${o.id || `${ts}:${out.length}`}:${role}`, role, text, date: new Date(ts) });
+    out.push({ key: `${base}:${o.id || `${ts}:${out.length}`}:${role}`, role, text, date: new Date(ts), raw: line.slice(0, 8000) });
   }
   return out;
 }
@@ -154,6 +154,74 @@ function splitSigner(text) {
   const STOP = ['日期', '金额', '备注', '时间', '渠道', '店铺', '商品', '数量', '合计', '说明', '状态', '销售额', '退款'];
   if (m && !STOP.includes(m[1])) return { sender: m[1].trim(), body: raw.slice(m[0].length).trim(), signed: true };
   return { sender: '', body: raw, signed: false };
+}
+
+/* ---------------- 从文件名 / 附件块识别「这份数据是谁的」 ---------------- */
+const FNAME_RE = new RegExp(`([^\\\\/:*?"<>|\\r\\n]{1,120}?\\.(?:${MEDIA_EXTS}))`, 'gi');
+
+/** 收集一条消息里出现的所有文件名（正文路径 + 附件字段 + 原始行） */
+function filenamesOf(e) {
+  const bag = new Set();
+  const push = (v) => { const t = String(v || '').trim(); if (t) bag.add(t); };
+  let m;
+  FNAME_RE.lastIndex = 0;
+  while ((m = FNAME_RE.exec(String(e.text || '')))) push(path.basename(m[1]));
+  // 附件常见字段：name / filename / fileName / path / file_path
+  try {
+    const o = JSON.parse(e.raw || '{}');
+    const walk = (v) => {
+      if (!v) return;
+      if (typeof v === 'string') { if (FNAME_RE.test(v)) { push(path.basename(v)); } FNAME_RE.lastIndex = 0; return; }
+      if (Array.isArray(v)) { v.forEach(walk); return; }
+      if (typeof v === 'object') {
+        for (const k of ['name', 'filename', 'fileName', 'path', 'file_path', 'filePath', 'title']) {
+          if (typeof v[k] === 'string') push(path.basename(v[k]));
+        }
+        Object.values(v).forEach((x) => { if (x && typeof x === 'object') walk(x); });
+      }
+    };
+    walk(o.content);
+  } catch { /* ignore */ }
+  return [...bag];
+}
+
+/**
+ * 从文件名里猜人名。支持：
+ *   张三-2026-11-18-天猫日报.xlsx / 张三_天猫日报.xlsx
+ *   天猫日报-张三.xlsx / 天猫日报（张三）.xlsx / 天猫日报(张三).xlsx
+ */
+const NAME_STOP = ['天猫','京东','拼多多','抖音','淘宝','快手','日报','明细','报表','月报','季报','年报','半年','汇总','销售','退款','订单','数据','清单','台账','对账','导出','商品','单品','渠道','店铺','月度','年度','周报','日报表','新'];
+
+function looksLikeName(seg) {
+  if (!seg) return false;
+  if (/^\d+$/.test(seg) || /\d/.test(seg)) return false;
+  if (!/^(?:[\u4e00-\u9fa5]{2,4}|[A-Za-z][A-Za-z0-9._-]{1,15})$/.test(seg)) return false;
+  return !NAME_STOP.some((w) => seg.includes(w));
+}
+
+/**
+ * 从文件名里猜人名。支持：
+ *   张三-2026-11-18-天猫日报.xlsx / 张三_京东明细.xlsx
+ *   天猫日报-李四.xlsx / 天猫日报（李四）.xlsx
+ *   汇总表.xlsx（无归属，返回空）
+ */
+function nameFromFilename(fn) {
+  const base = String(fn || '').replace(/\.[^.]+$/, '');
+  // 1) 括号最可靠：天猫日报（王五）
+  const p = base.match(/[（(]\s*([^)）]{2,8})\s*[)）]\s*$/);
+  if (p && looksLikeName(p[1].trim())) return p[1].trim();
+  // 2) 按分隔符切段，挑"像人名"的段（排除业务词与数字）
+  const segs = base.split(/[-_－—\s]+/).filter(Boolean);
+  const cands = segs.filter(looksLikeName);
+  if (cands.length === 1) return cands[0];
+  // 3) 多个候选时优先取开头（人名在前最常见）
+  if (segs.length && looksLikeName(segs[0])) return segs[0];
+  return '';
+}
+
+/** 会话 id 里的人名需要去掉非法字符 */
+function safeName(n) {
+  return String(n || '').replace(/[^\u4e00-\u9fa5A-Za-z0-9_-]/g, '').slice(0, 20);
 }
 
 /* ---------------- 媒体：复制到前端可访问目录 ---------------- */
@@ -213,6 +281,18 @@ function openDb() {
 
 /* ---------------- 主流程 ---------------- */
 function gather() {
+  // 测试用：ZD_AIBOT_EVENTS 指向一个事件 JSON（[{role,text,raw,ts}]），跳过 WorkBuddy 数据源
+  if (process.env.ZD_AIBOT_EVENTS) {
+    const arr = JSON.parse(fs.readFileSync(process.env.ZD_AIBOT_EVENTS, 'utf8'));
+    const events = arr.map((x, i) => ({
+      key: `fixture:${i}:${x.role}`,
+      role: x.role,
+      text: x.text || '',
+      raw: x.raw || JSON.stringify(x),
+      date: new Date(x.ts || Date.now()),
+    }));
+    return { sessions: [{ id: 'fixture' }], events, missing: [] };
+  }
   const sessions = wecomSessions();
   const events = [];
   const missing = [];
@@ -254,26 +334,44 @@ function syncOnce() {
   let made = 0;
   try {
     db.exec('BEGIN');
+    let curSid = '';       // 当前对话归属会话（助手回复跟着它走）
+    let curWho = '';       // 当前对话的提问人
+    let lastQ = '';        // 上一条用户消息摘要，用于「回：」配对
     for (const e of events) {
-      const sid = `wecom-aibot-${dayKey(e.date)}`;
-      if (tomb.get(sid)) continue;
       if (seen.get(e.key)) continue;
-      const title = `企微助理 · ${dayTitle(e.date)}`;
+      const hhmm = `${pad(e.date.getHours())}:${pad(e.date.getMinutes())}`;
+      const day = dayKey(e.date);
+      let sid;
+      let title;
+      let sender;
+      let body;
+
+      if (e.role === 'user') {
+        // 归属判定：正文署名 > 附件文件名 > 未归属
+        const { sender: signed, body: rest } = splitSigner(e.text);
+        const files = filenamesOf(e);
+        const fromFile = files.map(nameFromFilename).find(Boolean) || '';
+        const who = signed || fromFile;
+        const key = safeName(who);
+        sid = key ? `wecom-aibot-${key}-${day}` : `wecom-aibot-${day}`;
+        title = who ? `企微助理 · ${who} · ${dayTitle(e.date)}` : `企微助理 · ${dayTitle(e.date)}`;
+        if (tomb.get(sid)) { curSid = ''; continue; }
+        sender = who || SENDER;
+        const fileNote = files.length ? `（附件：${files.join('、')}）` : '';
+        body = `[${sender}] ${hhmm} ${rest}${fileNote}`;
+        curSid = sid; curWho = who; lastQ = String(rest || files[0] || '').slice(0, 24);
+      } else {
+        // 助手回复：挂到上一次提问所在的会话，并标注"回的是哪条"
+        sid = curSid || `wecom-aibot-${day}`;
+        title = curWho ? `企微助理 · ${curWho} · ${dayTitle(e.date)}` : `企微助理 · ${dayTitle(e.date)}`;
+        if (tomb.get(sid)) continue;
+        sender = '助手';
+        body = lastQ ? `↳ 回「${lastQ}」\n${hhmm} ${e.text}` : `${hhmm} ${e.text}`;
+      }
+
       const r = insSession.run(sid, SET_ID, title, stamp(e.date));
       if (r.changes) made += 1;
-      const hhmm = `${pad(e.date.getHours())}:${pad(e.date.getMinutes())}`;
-      let body;
-      let sender;
-      if (e.role === 'user') {
-        // 治标：正文里带「姓名：」或「[姓名]」时解析出来，渲染成姓名徽标
-        const { sender: who, body: rest } = splitSigner(e.text);
-        sender = who || SENDER;
-        body = `[${sender}] ${hhmm} ${rest}`;
-      } else {
-        sender = '助手';
-        body = `${hhmm} ${e.text}`;
-      }
-      const content = DRY ? body : decorateMedia(body, dayKey(e.date));
+      const content = DRY ? body : decorateMedia(body, day);
       if (!DRY) insMsg.run(sid, e.role, content, stamp(e.date), sender);
       insLog.run(e.key, sid, stamp(new Date()));
       wrote += 1;
@@ -291,6 +389,22 @@ function syncOnce() {
 
 /* ---------------- 自检：用样例转录验证链路 ---------------- */
 function selfTest() {
+  // 0) 文件名归属识别
+  const cases = [
+    ['张三-2026-11-18-天猫日报.xlsx', '张三'],
+    ['张三_京东明细.csv', '张三'],
+    ['天猫日报-李四.xlsx', '李四'],
+    ['天猫日报（王五）.xlsx', '王五'],
+    ['汇总表.xlsx', ''],
+  ];
+  let bad = 0;
+  for (const [fn, want] of cases) {
+    const got = nameFromFilename(fn);
+    if (got !== want) { bad += 1; console.log(`  ✗ ${fn} → ${got || '(空)'}（期望 ${want || '(空)'}）`); }
+  }
+  console.log(`自检：文件名归属 ${cases.length - bad}/${cases.length} 通过`);
+  if (bad) process.exit(1);
+
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zd-aibot-'));
   const sid = `selftest-${Date.now()}`;
   const now = Date.now();

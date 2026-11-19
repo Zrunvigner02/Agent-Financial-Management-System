@@ -369,12 +369,14 @@ npm run dev
 
 | 路径 | 内容 |
 | --- | --- |
-| `backend/` | 本地后端：路由、账务、LLM、智能体、追问、附件、报表导出、Filee 集成、数据审计、会话命名、种子数据 |
+| `backend/` | 本地后端：路由、账务、LLM、智能体、意图分流（`intent-router.mjs`）、追问、附件、报表导出、数据审计、会话命名、种子数据 |
 | `upstream/` | 前端静态站：入口页、格式转换页、导出页、已构建资源、注入层 `sales-board.js`（销售看板）· `reports.js`（报表中心）· `agent-media.js`（聊天附件与姓名徽标）· `clarify.js`（追问卡片）· `orders-drawer.js` · `fixed-cost-panel.js` |
 | `desktop/` | Electron 桌面端源码与图标（不含 `node_modules/` 与 `runtime/node.exe`）；`launcher.pyw` 会顺带拉起两个同步器 |
 | `tools/` | 测试与运维：回归、审计、清理、MCP stdio 桥、Filee 转换桥、**修改安全锁**、界面截图；同步与发布于 `claw-sync.mjs`（本地助理对话）、`aibot-sync.mjs`（企微 AIBot 会话）、`push-git.mjs` / `gh-api-push.mjs`（发布） |
 | `server.mjs` | 静态服务 + `/api` 反向代理（支持 `.env` 热读取） |
 | `docs/` | Filee 集成说明、验证报告、`images/` 界面截图（**`images/v19/` 为 v1.9 实机截图**） |
+| `rules/` | 报表规则、企微应答规则、**意图分流规则**（`intent-routing.md`） |
+| `AGENTS.md` | 给 AI 助理的默认约定：业务→财务智能体、工程→本地助理 |
 | `logs/` | 本地运行日志（已忽略，不入库） |
 | `analysis/` | 接口探测与回归快照（43 MB 逆向 gzip 产物不入库） |
 | `release/` | 源码打包归档 |

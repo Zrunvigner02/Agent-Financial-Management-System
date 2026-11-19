@@ -74,11 +74,37 @@
     document.head.appendChild(s2);
   }
 
+  // 内嵌主区样式（像原生页一样，不遮挡侧栏）
+  const sInline = document.createElement('style');
+  sInline.textContent = `
+    .zd-fc.zd-fc-inline{background:var(--bg,#F3F1EB);padding:20px 26px 40px;overflow:auto;border-left:1px solid var(--line,#E2DFD7);font:13px/1.55 "Microsoft YaHei",system-ui,sans-serif}
+    .zd-fc.zd-fc-inline .zd-fc-card{width:100%;max-width:1080px;max-height:none;height:auto;border:0;border-radius:0;box-shadow:none;background:transparent;display:block}
+    .zd-fc.zd-fc-inline .zd-fc-pill{display:none}
+    .zd-fc.zd-fc-inline .zd-fc-hd{padding:0 0 12px;border:0}
+    .zd-fc.zd-fc-inline .zd-fc-hd h4{font-size:22px;font-weight:700;color:#17241F}
+    .zd-fc.zd-fc-inline .zd-fc-hd small{font-size:12px;color:#6E7B76;font-weight:500;margin-left:8px}
+    .zd-fc.zd-fc-inline .zd-fc-total{background:#fff;border:1px solid #E2DFD7;border-radius:14px;padding:14px 16px;margin-bottom:12px}
+    .zd-fc.zd-fc-inline .zd-fc-body{padding:0;overflow:visible}
+    .zd-fc.zd-fc-inline .zd-fc-row{background:#fff;border:1px solid #E2DFD7;border-radius:12px;margin-bottom:8px;padding:12px 14px}
+    .zd-fc.zd-fc-inline .zd-fc-foot{border:0;padding:14px 0 0;display:flex;justify-content:flex-start;gap:8px}
+    .zd-fc.zd-fc-inline .zd-fc-foot button{flex:0 0 auto;width:auto;height:32px;padding:0 16px;border-radius:9px;border:1px solid #E2DFD7;background:#fff;color:#3D4F49;cursor:pointer;font-family:inherit;font-size:12.5px}
+    .zd-fc.zd-fc-inline .zd-fc-foot button:hover{border-color:#46B391;color:#1F5E4C}
+    .zd-fc.zd-fc-inline .zd-fc-foot button.primary{background:linear-gradient(135deg,#1F5E4C,#46B391);color:#fff;border:0}
+    .zd-fc-month{display:flex;align-items:center;gap:8px;margin:0 0 14px}
+    .zd-fc-month input[type=month]{height:32px;border:1px solid #E2DFD7;border-radius:9px;padding:0 10px;font-family:inherit;font-size:13px;color:#17241F;background:#fff}
+    .zd-fc-month button{height:32px;border:1px solid #E2DFD7;background:#fff;border-radius:9px;padding:0 12px;cursor:pointer;font-family:inherit;font-size:12.5px;color:#3D4F49}
+    .zd-fc-month button:hover{border-color:#46B391;color:#1F5E4C}
+    .zd-fc-month .lbl{font-size:12px;color:#6E7B76}
+  `;
+  document.head.appendChild(sInline);
+
   const root = document.createElement('div');
   root.className = 'zd-fc';
   document.body.appendChild(root);
+  let unregisterClose = null;
+  const closeSimple = () => { state.open = false; render(); };
 
-  let state = { open: false, loading: false, plan: null, notice: null, error: '' };
+  let state = { open: false, loading: false, plan: null, notice: null, error: '', period: currentPeriod() };
 
   async function api(path, opts = {}) {
     const r = await fetch(API + path, {
@@ -98,7 +124,7 @@
     if (!token()) { state.error = '未登录'; render(); return; }
     state.loading = true; render();
     try {
-      const period = currentPeriod();
+      const period = state.period || currentPeriod();
       const [p, n] = await Promise.all([
         api(`/api/recurring?period=${period}`),
         api(`/api/recurring/reminder?auto=0&period=${period}`).catch(() => null),
@@ -173,14 +199,27 @@
       <span style="color:#8a90a2">${p ? `${p.count} 项` : ''}</span>
     </div>`;
 
-    root.classList.toggle('zd-fc-center', SIDEBAR && state.open);
+    const inline = !!(SIDEBAR && state.open && window.__zdInline);
+    root.classList.toggle('zd-fc-inline', inline);
+    root.classList.remove('zd-fc-center');
     if (!state.open) {
       if (SIDEBAR) { root.innerHTML = ''; return; }
       root.innerHTML = pill; bind(); return;
     }
+    if (inline) {
+      window.__zdInline.key('fixed');
+      window.__zdInline.apply(root);
+      unregisterClose = window.__zdInline.register(closeSimple);
+    }
 
     root.innerHTML = `<div class="zd-fc-card">
-      <div class="zd-fc-hd"><h4>固定支出<small>${currentPeriod()}</small></h4><span class="zd-fc-x" data-act="close">×</span></div>
+      <div class="zd-fc-hd"><h4>固定支出<small>${state.period || currentPeriod()}</small></h4><span class="zd-fc-x" data-act="close">×</span></div>
+      <div class="zd-fc-month">
+        <span class="lbl">期间</span>
+        <button data-act="prev">上一月</button>
+        <input type="month" data-role="period" value="${state.period || currentPeriod()}">
+        <button data-act="next">下一月</button>
+      </div>
       <div class="zd-fc-total"><b>¥ ${money(total)}</b><span>已生成 ${p ? p.generated : 0} / 共 ${p ? p.count : 0} 项</span></div>
       <div class="zd-fc-body">${renderBody()}</div>
       <div class="zd-fc-foot"><button data-act="refresh">刷新</button><button class="primary" data-act="ask">让智能体改</button></div>
@@ -247,6 +286,12 @@
         else if (act === 'close') { state.open = false; render(); }
         else if (act === 'refresh') load();
         else if (act === 'ack') ackNotice();
+        else if (act === 'prev' || act === 'next') {
+          const [y, m] = String(state.period || currentPeriod()).split('-').map(Number);
+          const d = new Date(y, m - 1 + (act === 'next' ? 1 : -1), 1);
+          state.period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          load();
+        }
         else if (act === 'item') { openHistory(el.getAttribute('data-id')); }
         else if (act === 'ask') {
           state.open = false; render();
@@ -257,6 +302,12 @@
             box.dispatchEvent(new Event('input', { bubbles: true }));
           }
         }
+      });
+    });
+    root.querySelectorAll('input[data-role="period"]').forEach((inp) => {
+      inp.addEventListener('change', () => {
+        state.period = inp.value || currentPeriod();
+        load();
       });
     });
   }

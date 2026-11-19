@@ -32,6 +32,13 @@
   .zd-od-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef1f6}
   .zd-od-hd h3{margin:0;font-size:15px}
   .zd-od-x{cursor:pointer;color:#98a0b0;font-size:18px;padding:0 4px}
+  .zd-od-dates{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid #eef1f6;background:#FAF8F2}
+  .zd-od-dates input[type=date]{height:30px;border:1px solid #E2DFD7;border-radius:8px;padding:0 8px;font-family:inherit;font-size:12.5px;color:#17241F;background:#fff}
+  .zd-od-dates button{height:30px;border:1px solid #E2DFD7;background:#fff;border-radius:8px;padding:0 11px;font-family:inherit;font-size:12.5px;color:#3D4F49;cursor:pointer}
+  .zd-od-dates button:hover{border-color:#46B391;color:#1F5E4C}
+  .zd-od-chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid #E2DFD7;background:#fff;color:#3D4F49;cursor:pointer}
+  .zd-od-chip.on{background:#1F5E4C;border-color:#1F5E4C;color:#fff}
+  .zd-od-dates .lbl{font-size:12px;color:#6E7B76}
   .zd-od-tabs{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid #eef1f6}
   .zd-od-tab{padding:5px 12px;border-radius:999px;background:#f4f6fa;color:#5b6273;cursor:pointer;font-size:12px}
   .zd-od-tab.on{background:#1F5E4C;color:#fff}
@@ -54,7 +61,8 @@
   .zd-od-tl small{color:#8a90a2;display:block}
   .zd-od-empty{padding:26px 16px;color:#8a90a2;font-size:12px;text-align:center;line-height:1.8}
   .zd-od-foot{padding:10px 16px;border-top:1px solid #eef1f6;display:flex;gap:8px}
-  .zd-od-foot button{flex:1;border:1px solid #e3e7ef;background:#fff;border-radius:8px;padding:7px 0;font-size:12px;cursor:pointer;color:#3a4152}
+  .zd-od-foot button{flex:0 0 auto;border:1px solid #E2DFD7;background:#fff;border-radius:9px;padding:0 16px;height:32px;font-size:12.5px;cursor:pointer;color:#3D4F49;font-family:inherit}
+  .zd-od-foot button:hover{border-color:#46B391;color:#1F5E4C}
   .zd-od-foot button.primary{background:#1F5E4C;border-color:#1F5E4C;color:#fff}
   .zd-od-back{color:#1F5E4C;cursor:pointer;font-size:12px;padding:8px 16px;display:inline-block}
   `;
@@ -129,6 +137,27 @@
   }
 
   let unregister = null;
+  const todayStr = () => new Date().toLocaleDateString('sv-SE');
+  const monthStr = () => todayStr().slice(0, 7);
+  const shiftMonth = (ym, delta) => {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  let range = { from: `${monthStr()}-01`, to: todayStr(), quick: 'month' };
+  function applyQuick(k) {
+    const t = todayStr();
+    if (k === 'today') range = { from: t, to: t, quick: k };
+    else if (k === '7d') {
+      const d = new Date(); d.setDate(d.getDate() - 6);
+      range = { from: d.toLocaleDateString('sv-SE'), to: t, quick: k };
+    } else if (k === 'month') range = { from: `${monthStr()}-01`, to: t, quick: k };
+    else if (k === 'lastMonth') {
+      const last = shiftMonth(monthStr(), -1);
+      const end = new Date(Number(last.slice(0, 4)), Number(last.slice(5, 7)), 0).getDate();
+      range = { from: `${last}-01`, to: `${last}-${String(end).padStart(2, '0')}`, quick: k };
+    }
+  }
   function close() {
     if (mask) mask.remove();
     if (drawer) drawer.remove();
@@ -166,7 +195,7 @@
     if (detail) {
       body = renderDetail(detail);
     } else if (tab === 'orders') {
-      const j = await api(`/api/orders?limit=100`);
+      const j = await api(`/api/orders?from=${range.from}&to=${range.to}&limit=300`);
       const items = (j.data && j.data.items) || [];
       body = items.length
         ? items.map((o) => `<div class="zd-od-row" data-act="detail" data-id="${o.id}">
@@ -177,7 +206,7 @@
         : '<div class="zd-od-empty">本月还没有订单。<br>对智能体说「建个订单，客户张三，面膜 2 盒 129 元」即可。</div>';
       foot = `<div class="zd-od-foot"><button data-act="refresh">刷新</button><button class="primary" data-act="exp-xlsx">导出订单 Excel</button></div>`;
     } else if (tab === 'ledger') {
-      const j = await api(`/api/ledger/timeline?period=${period()}&limit=300`);
+      const j = await api(`/api/ledger/timeline?period=${(range.to || todayStr()).slice(0, 7)}&limit=300`);
       const d = j.data || { items: [] };
       body = d.items.length
         ? `<div class="zd-od-sec"><h4>${period()} · 凭证 ${d.vouchers} 条 · 订单 ${d.orders} 条（按日期倒序）</h4></div>` +
@@ -191,7 +220,7 @@
         : '<div class="zd-od-empty">本月还没有凭证或订单。</div>';
       foot = `<div class="zd-od-foot"><button data-act="refresh">刷新</button><button class="primary" data-act="exp-xlsx">导出支出明细</button></div>`;
     } else {
-      const j = await api(`/api/expenses/detail?period=${period()}&limit=300`);
+      const j = await api(`/api/expenses/detail?period=${(range.to || todayStr()).slice(0, 7)}&limit=300`);
       const d = j.data || { items: [], count: 0, total: 0 };
       body = d.items.length
         ? `<div class="zd-od-sec"><h4>${period()} · 共 ${d.count} 条 · 净额 ${money(d.total)}</h4></div>` +
@@ -203,7 +232,18 @@
       foot = `<div class="zd-od-foot"><button data-act="refresh">刷新</button><button class="primary" data-act="exp-xlsx">导出支出明细</button></div>`;
     }
 
-    drawer.innerHTML = head + tabs + `<div class="zd-od-body">${body}</div>` + foot;
+    const bar = (detail || tab !== 'orders') ? '' : `<div class="zd-od-dates">
+        <span class="lbl">日期</span>
+        <input type="date" data-r="from" value="${range.from}">
+        <span class="lbl">~</span>
+        <input type="date" data-r="to" value="${range.to}">
+        <button data-act="apply">查询</button>
+        <span class="zd-od-chip ${range.quick === 'today' ? 'on' : ''}" data-quick="today">今天</span>
+        <span class="zd-od-chip ${range.quick === '7d' ? 'on' : ''}" data-quick="7d">近7天</span>
+        <span class="zd-od-chip ${range.quick === 'month' ? 'on' : ''}" data-quick="month">本月</span>
+        <span class="zd-od-chip ${range.quick === 'lastMonth' ? 'on' : ''}" data-quick="lastMonth">上月</span>
+      </div>`;
+    drawer.innerHTML = head + tabs + bar + `<div class="zd-od-body">${body}</div>` + foot;
     bind(drawer);
   }
 
@@ -247,11 +287,32 @@
           const id = el.getAttribute('data-id');
           const j = await api(`/api/orders/${id}`);
           if (j.code === 0) { detail = j.data; await render(); }
+        } else if (act === 'apply') {
+          const f = root.querySelector('[data-r="from"]');
+          const t = root.querySelector('[data-r="to"]');
+          if (f) range.from = f.value || range.from;
+          if (t) range.to = t.value || range.to;
+          range.quick = '';
+          await render();
         } else if (act === 'exp-xlsx') {
           const kind = tab === 'orders' ? 'orders' : 'expenses';
           const url = `/api/export/report?kind=${kind}&period=${period()}&format=xlsx&token=${encodeURIComponent(token())}`;
           window.open(url, '_blank');
         }
+      });
+    });
+    root.querySelectorAll('[data-quick]').forEach((el) => {
+      el.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        applyQuick(el.getAttribute('data-quick'));
+        await render();
+      });
+    });
+    root.querySelectorAll('[data-r]').forEach((inp) => {
+      inp.addEventListener('change', () => {
+        range.quick = '';
+        if (inp.getAttribute('data-r') === 'from') range.from = inp.value || range.from;
+        else range.to = inp.value || range.to;
       });
     });
   }

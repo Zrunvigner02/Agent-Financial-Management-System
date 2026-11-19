@@ -1,6 +1,6 @@
 {
   "name": "jinli-finance-local",
-  "version": "1.9.8",
+  "version": "1.9.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -57,6 +57,7 @@
     "wecom:digest:draft": "node tools/wecom-digest.mjs --no-send",
     "aibot:sync": "node tools/aibot-sync.mjs",
     "aibot:watch": "node tools/aibot-sync.mjs --watch",
-    "test:intent": "node tools/test-intent-router.mjs"
+    "test:intent": "node tools/test-intent-router.mjs",
+    "daily:channel": "node tools/make-channel-daily.mjs"
   }
 }

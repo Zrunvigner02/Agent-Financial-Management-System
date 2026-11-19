@@ -51,13 +51,14 @@ export function saveChannel(setId, data = {}) {
 
 /* ---------------- 销售日数据 ---------------- */
 
-export function listSales(setId, { from = '', to = '', source = '', product = '', limit = 200 } = {}) {
+export function listSales(setId, { from = '', to = '', source = '', product = '', staff = '', limit = 200 } = {}) {
   const where = ['set_id = ?'];
   const params = [setId];
   if (from) { where.push('date >= ?'); params.push(from); }
   if (to) { where.push('date <= ?'); params.push(to); }
   if (source) { where.push('source = ?'); params.push(source); }
   if (product) { where.push('product LIKE ?'); params.push(`%${product}%`); }
+  if (staff) { where.push("COALESCE(staff,'') = ?"); params.push(staff); }
   const rows = all(`SELECT * FROM sales_daily WHERE ${where.join(' AND ')}
     ORDER BY date DESC, id DESC LIMIT ?`, ...params, Math.min(1000, Number(limit) || 200));
   const sum = rows.reduce((s, r) => ({
@@ -73,7 +74,7 @@ export function listSales(setId, { from = '', to = '', source = '', product = ''
       qty: r.qty, amount: money(r.amount), return_qty: r.return_qty,
       return_amount: money(r.return_amount), cost: money(r.cost),
       fee: money(r.fee), gross_profit: money(r.gross_profit), net_profit: money(r.net_profit),
-      group_name: r.group_name || '', source: r.source,
+      group_name: r.group_name || '', staff: r.staff || '', source: r.source,
     })),
   });
 }
@@ -474,4 +475,28 @@ export function listIntake(setId, { from = '', to = '', category = '', source = 
   } catch (e) {
     return ok({ count: 0, items: [], note: `数据归集表尚未建立：${e.message}` });
   }
+}
+
+/* ---------------- 员工-渠道归属映射 ---------------- */
+export function setStaffMap(setId, { rows = [] } = {}) {
+  if (!Array.isArray(rows) || !rows.length) return fail('没有收到归属数据');
+  let updated = 0;
+  const done = [];
+  for (const r of rows) {
+    const ch = String(r.channel || r.group_name || r['渠道'] || '').trim();
+    const st = String(r.staff || r.name || r['员工'] || '').trim();
+    if (!ch || !st) continue;
+    const info = run('UPDATE sales_daily SET staff = ? WHERE set_id = ? AND group_name = ?', st, setId, ch);
+    updated += Number(info.changes || 0);
+    done.push(`${ch}→${st}`);
+  }
+  return updated
+    ? ok({ updated, mapping: done }, `已为 ${updated} 条销售记录绑定员工（${done.join('、')}）`)
+    : fail('没有匹配到可更新的记录，请确认渠道名与销售数据一致');
+}
+
+export function staffSummary(setId) {
+  const rows = all(`SELECT COALESCE(staff,'') AS staff, COUNT(*) AS n, ROUND(SUM(amount),2) AS amount
+    FROM sales_daily WHERE set_id = ? GROUP BY COALESCE(staff,'') ORDER BY amount DESC`, setId);
+  return ok({ items: rows });
 }

@@ -123,7 +123,9 @@
   .zd-rp-btn{height:32px;border:1px solid var(--line,#E2DFD7);background:#fff;border-radius:9px;padding:0 13px;font-size:12px;cursor:pointer;color:var(--ink-2,#3D4F49);font-family:inherit}
   .zd-rp-btn:hover{border-color:#46B391;color:#1F5E4C}
   .zd-rp-btn.primary{background:linear-gradient(135deg,#1F5E4C,#46B391);color:#fff;border:0}
-  .zd-rp-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .zd-rp-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .zd-rp-lbl{font-size:12px;color:var(--muted,#6E7B76);min-width:28px}
+  .zd-rp-muted{font-size:12px;color:#9AA8A0}
   .zd-rp-chip{border:1px solid var(--line,#E2DFD7);background:#fff;color:var(--ink-2,#3D4F49);border-radius:999px;padding:5px 13px;font-size:12px;cursor:pointer}
   .zd-rp-chip.on{background:#1F5E4C;border-color:#1F5E4C;color:#fff}
   .zd-rp-card{background:#fff;border:1px solid var(--line,#E2DFD7);border-radius:14px;padding:15px 16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(23,36,31,.05)}
@@ -162,6 +164,11 @@
   }
 
   let unregister = null;
+  // 渠道 / 员工交叉筛选（销售口径）
+  const pick = { channels: [], staff: [] };
+  let channelOptions = [];
+  let staffOptions = [];
+  let allSales = [];
   function open(caliber = 'sales', dim = 'month', cat = 'summary') {
     st.caliber = caliber === 'finance' ? 'finance' : 'sales';
     st.dim = dim || 'month';
@@ -209,7 +216,16 @@
         if (agg) { st.rows = agg.list; st.kpi = agg.total; }
         else { st.rows = []; st.kpi = { amount: 0, ret: 0, fee: 0, net: 0, cnt: 0 }; }
       } else {
-        const items = (await loadSalesReport(st.from, st.to)).map((x) => ({ ...x, ret: x.return_amount, net: x.net_profit, date: x.date }));
+        const raw = (await loadSalesReport(st.from, st.to)).map((x) => ({ ...x, ret: x.return_amount, net: x.net_profit, date: x.date }));
+        allSales = raw;
+        channelOptions = [...new Set(raw.map((x) => x.group_name || '未分组'))].filter(Boolean).sort();
+        staffOptions = [...new Set(raw.map((x) => x.staff || ''))].filter(Boolean).sort();
+        const items = raw.filter((x) => (pick.channels.length ? pick.channels.includes(x.group_name || '未分组') : true)
+          && (pick.staff.length ? pick.staff.includes(x.staff || '') : true));
+        const filtTip = (pick.channels.length || pick.staff.length)
+          ? `已筛选：${pick.channels.length ? `渠道 ${pick.channels.join('/')}` : ''}${pick.channels.length && pick.staff.length ? ' · ' : ''}${pick.staff.length ? `员工 ${pick.staff.join('/')}` : ''}`
+          : '';
+        if (filtTip) st.note = filtTip;
         if (st.cat === 'channel') {
           const agg = aggregate(items, st.dim, (it) => it.group_name || '未分组');
           st.rows = agg.list.sort((a, b) => b.amount - a.amount); st.kpi = agg.total;
@@ -275,6 +291,22 @@
     return `<table class="zd-rp-table"><thead><tr><th>日期</th><th>提交人</th><th>类别</th><th>文件</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
+  function filterBar() {
+    if (st.caliber !== 'sales') return '';
+    if (st.cat !== 'channel' && st.cat !== 'summary') return '';
+    const ch = channelOptions.length
+      ? channelOptions.map((c) => `<span class="zd-rp-chip ${pick.channels.includes(c) ? 'on' : ''}" data-ch="${esc(c)}">${esc(c)}</span>`).join('')
+      : '<span class="zd-rp-muted">暂无渠道数据</span>';
+    const stf = staffOptions.length
+      ? staffOptions.map((v) => `<span class="zd-rp-chip ${pick.staff.includes(v) ? 'on' : ''}" data-stf="${esc(v)}">${esc(v)}</span>`).join('')
+      : '<span class="zd-rp-muted">待接入</span><button class="zd-rp-btn" data-a="staff-import">导入员工归属(CSV)</button><input type="file" accept=".csv,.txt" data-staff-file style="display:none">';
+    const active = pick.channels.length || pick.staff.length;
+    return `<div class="zd-rp-card" style="padding:10px 14px;margin-bottom:12px">
+      <div class="zd-rp-bar" style="margin:0 0 6px"><span class="zd-rp-lbl">渠道</span>${ch}</div>
+      <div class="zd-rp-bar" style="margin:0"><span class="zd-rp-lbl">员工</span>${stf}${active ? '<button class="zd-rp-btn" data-a="clear-filters" style="margin-left:auto">清空筛选</button>' : ''}</div>
+    </div>`;
+  }
+
   function render() {
     if (!el) return;
     const caliberLabel = st.caliber === 'finance' ? '财务口径' : '销售口径';
@@ -298,6 +330,7 @@
       <div class="zd-rp-bar">${DIMS.map(([k, l]) => `<span class="zd-rp-chip ${st.dim === k ? 'on' : ''}" data-d="${k}">${l}</span>`).join('')}</div>
       ${st.dim === 'custom' ? `<div class="zd-rp-bar"><input type="date" class="zd-rp-date" data-f value="${st.from}"><span style="color:#9AA8A0">~</span><input type="date" class="zd-rp-date" data-t value="${st.to}"><button class="zd-rp-btn" data-a="reload">应用</button></div>` : ''}
       <div class="zd-rp-bar">${cats.map(([k, l]) => `<span class="zd-rp-chip ${st.cat === k ? 'on' : ''}" data-c="${k}">${l}</span>`).join('')}</div>
+      ${filterBar()}
       ${st.note ? `<div class="zd-rp-note">${esc(st.note)}</div>` : ''}
       ${body}`;
   }
@@ -330,9 +363,42 @@
     if (chip) { st.dim = chip.getAttribute('data-d'); const r = rangeOf(st.dim); st.from = r.from; st.to = r.to; load(); return; }
     const c2 = e.target.closest('[data-c]');
     if (c2) { st.cat = c2.getAttribute('data-c'); load(); return; }
+    const chEl = e.target.closest('[data-ch]');
+    if (chEl) {
+      const v = chEl.getAttribute('data-ch');
+      pick.channels = pick.channels.includes(v) ? pick.channels.filter((x) => x !== v) : [...pick.channels, v];
+      load(); return;
+    }
+    const stfEl = e.target.closest('[data-stf]');
+    if (stfEl) {
+      const v = stfEl.getAttribute('data-stf');
+      pick.staff = pick.staff.includes(v) ? pick.staff.filter((x) => x !== v) : [...pick.staff, v];
+      load(); return;
+    }
     const a = e.target.closest('[data-a]');
     if (!a) return;
     if (a.getAttribute('data-a') === 'close') close();
+    if (a.getAttribute('data-a') === 'clear-filters') { pick.channels = []; pick.staff = []; load(); return; }
+    if (a.getAttribute('data-a') === 'staff-import') {
+      const inp = el.querySelector('[data-staff-file]');
+      if (!inp) return;
+      inp.onchange = async () => {
+        const file = inp.files && inp.files[0];
+        if (!file) return;
+        const text = await file.text();
+        const rows = text.split(/\r?\n/).map((l) => l.split(/[,\t]/))
+          .map((c) => ({ channel: (c[0] || '').trim(), staff: (c[1] || '').trim() }))
+          .filter((r) => r.channel && r.staff && !/^渠道$/.test(r.channel));
+        if (!rows.length) { st.note = 'CSV 需要两列：渠道,员工'; render(); return; }
+        try {
+          const j = await api('/api/enterprise/staff-map', { method: 'POST', body: JSON.stringify({ rows }) });
+          st.note = j.message || `已绑定 ${rows.length} 个渠道`;
+          await load();
+        } catch (e) { st.note = '导入失败：' + e.message; render(); }
+      };
+      inp.click();
+      return;
+    }
     if (a.getAttribute('data-a') === 'reload') {
       const f = el.querySelector('[data-f]'), t = el.querySelector('[data-t]');
       if (f) st.from = f.value || st.from;

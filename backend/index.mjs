@@ -1010,6 +1010,8 @@ async function handle(req, res) {
   if (p === '/api/enterprise/sales' && method === 'GET') return reply(res, ent.listSales(setId, q));
   if (p === '/api/enterprise/sales/import' && method === 'POST') return reply(res, ent.importSales(setId, body));
   if (p === '/api/enterprise/sales/parse' && method === 'POST') return reply(res, await ent.parseSalesUpload(body));
+  if (p === '/api/enterprise/staff-map' && method === 'POST') return reply(res, ent.setStaffMap(setId, body));
+  if (p === '/api/enterprise/staff-summary' && method === 'GET') return reply(res, ent.staffSummary(setId));
   if (p === '/api/enterprise/intake' && method === 'GET') return reply(res, ent.listIntake(setId, q));
   if (p === '/api/enterprise/ops' && method === 'GET') return reply(res, ent.listOpsSpend(setId, q));
   if (p === '/api/enterprise/distribution' && method === 'GET') return reply(res, ent.listDistribution(setId, q));

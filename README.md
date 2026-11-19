@@ -349,6 +349,9 @@ npm run dev
 | `npm start` | 只起前端静态服务与反向代理 |
 | `npm run backend` | 只起本地后端（含 `/mcp`） |
 | `npm run check` | 20+ 脚本语法检查 |
+| `npm run verify:templates` | 两个固定版式校验（渠道日报 29 栏 + 标准月对比表 7 表，17 项） |
+| `npm run test:finance-logic` | 财务损益链 / 幂等 / 口径隔离（15 项） |
+| `npm run regress:all` | 一键全量：语法 + 三项专项 + 117 项回归 |
 | `npm run claw:watch` | 本地助理对话按日同步进「妆点智能体」（常驻，单例锁） |
 | `npm run aibot:watch` | 企微 AIBot 会话按日同步进「妆点智能体」（常驻，单例锁） |
 | `npm run aibot:sync` | 手动跑一次企微会话同步 |

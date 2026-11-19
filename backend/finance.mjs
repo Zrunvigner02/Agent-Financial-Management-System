@@ -138,15 +138,16 @@ export function periodsOf(period) {
     return [1, 2, 3].map((i) => `${y}-${String((n - 1) * 3 + i).padStart(2, '0')}`);
   }
   if (/^\d{4}-\d{2}$/.test(period)) return [period];
-  if (/^\d{4}-\d{2}-\d{2}$/.test(period)) return [period.slice(0, 7)];
+  // 日维度：财务日报直接按天取（fiscal 日报需要日粒度的成本/费用明细）
+  if (/^\d{4}-\d{2}-\d{2}$/.test(period)) return [period];
   return [];
 }
 
 function collectRows(setId, periods, brand) {
   const ph = periods.map(() => '?').join(',');
-  const params = [setId, ...periods];
+  const params = [setId, ...periods, ...periods];
   let sql = `SELECT brand, channel, item, amount, basis, period FROM fin_pnl_lines
-    WHERE set_id = ? AND substr(period, 1, 7) IN (${ph})`;
+    WHERE set_id = ? AND (substr(period, 1, 7) IN (${ph}) OR period IN (${ph}))`;
   if (brand) { sql += ' AND brand = ?'; params.push(brand); }
   return all(sql, ...params);
 }

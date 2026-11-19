@@ -1,6 +1,6 @@
 {
   "name": "jinli-finance-local",
-  "version": "1.9.11",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -58,6 +58,9 @@
     "aibot:sync": "node tools/aibot-sync.mjs",
     "aibot:watch": "node tools/aibot-sync.mjs --watch",
     "test:intent": "node tools/test-intent-router.mjs",
-    "daily:channel": "node tools/make-channel-daily.mjs"
+    "daily:channel": "node tools/make-channel-daily.mjs",
+    "verify:templates": "node tools/verify-templates.mjs",
+    "test:finance-logic": "node tools/test-finance-logic.mjs",
+    "regress:all": "npm run check && npm run test:finance-logic && npm run verify:templates && npm run test:intent && npm run regression"
   }
 }

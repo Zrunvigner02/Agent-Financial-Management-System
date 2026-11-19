@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-17T10:02:25.846Z",
+  "at": "2026-11-19T06:47:40.351Z",
   "port": 8002,
   "isolated": true,
   "summary": "117 PASS / 0 FAIL",
@@ -16,7 +16,7 @@
       "group": "A · 基础设施与鉴权",
       "name": "health 结构与真实基线",
       "pass": true,
-      "detail": "subjects=131 vouchers=0"
+      "detail": "subjects=131 vouchers=22"
     },
     {
       "group": "A · 基础设施与鉴权",
@@ -112,7 +112,7 @@
       "group": "D · 凭证全生命周期",
       "name": "创建借贷平衡凭证",
       "pass": true,
-      "detail": "id=1 amount=12345.67"
+      "detail": "id=23 amount=12345.67"
     },
     {
       "group": "D · 凭证全生命周期",
@@ -130,7 +130,7 @@
       "group": "D · 凭证全生命周期",
       "name": "凭证详情 / 列表可查",
       "pass": true,
-      "detail": "total=1"
+      "detail": "total=3"
     },
     {
       "group": "D · 凭证全生命周期",
@@ -208,7 +208,7 @@
       "group": "G · 智能体配置 / 技能 / 会话",
       "name": "系统提示词声明本地账套与取数能力（不再否认有数据）",
       "pass": true,
-      "detail": "len=344 你是妆点管账（本地桌面财务软件）内置的财务助手，回答简洁、专业，涉及金额时保留两位小数。\n\n【运行环境】你运行在本机，后端已直连本地账套「振"
+      "detail": "len=345 你是妆点管账（本地桌面财务软件）内置的财务助手，回答简洁、专业，涉及金额时保留两位小数。\n\n【运行环境】你运行在本机，后端已直连本地账套「振"
     },
     {
       "group": "G · 智能体配置 / 技能 / 会话",
@@ -244,7 +244,7 @@
       "group": "G · 智能体配置 / 技能 / 会话",
       "name": "已创建的会话可重命名并删除",
       "pass": true,
-      "detail": "sid=25aa4af913ab11b91f3d6a56 put=0 del=0"
+      "detail": "sid=fafe011ecbb101cff5748eae put=0 del=0"
     },
     {
       "group": "G · 智能体配置 / 技能 / 会话",
@@ -268,7 +268,7 @@
       "group": "H · 意图追问工具",
       "name": "偏好开关 持久化 / 关闭 / 恢复",
       "pass": true,
-      "detail": "true → false → true"
+      "detail": "false → false → true"
     },
     {
       "group": "H · 意图追问工具",
@@ -286,7 +286,7 @@
       "group": "H · 意图追问工具",
       "name": "旧页面（capable=false）不会只发文字无卡片",
       "pass": true,
-      "detail": "session_title,tool,tool,tool…"
+      "detail": "session_title,content,content,content…"
     },
     {
       "group": "H · 意图追问工具",
@@ -298,7 +298,7 @@
       "group": "H2 · 会话自动命名",
       "name": "前端先建会话 → 首条消息发 session_title 且列表同步改名",
       "pass": true,
-      "detail": "sid=5e59787628a2dd601cb07cca event={\"session_id\":\"5e59787628a2dd601cb07cca\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
+      "detail": "sid=12f4ca65c432c1ed54e5b9e1 event={\"session_id\":\"12f4ca65c432c1ed54e5b9e1\",\"title\":\"本月的财务报表\",\"source\":\"auto\",\"changed\":true} list=本月的财务报表"
     },
     {
       "group": "H2 · 会话自动命名",
@@ -310,13 +310,13 @@
       "group": "H2 · 会话自动命名",
       "name": "追问选项消息不命名，真实问题才命名",
       "pass": true,
-      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1794909737866\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
+      "detail": "first=content,clarify,done second={\"session_id\":\"reg-title-opt-1795070847787\",\"title\":\"本月的利润表\",\"source\":\"auto\",\"changed\":true}"
     },
     {
       "group": "H2 · 会话自动命名",
       "name": "auto-title 精修端点：自动生成可精修 / 人工名称不动",
       "pass": true,
-      "detail": "a={\"session_id\":\"383cc4ad911e74bb816f5262\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"383cc4ad911e74bb816f5262\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
+      "detail": "a={\"session_id\":\"cd1197f9419c18b9c9e2393f\",\"title\":\"本月现金流情况\",\"source\":\"heuristic\",\"changed\":false} b={\"session_id\":\"cd1197f9419c18b9c9e2393f\",\"title\":\"人工锁定\",\"source\":\"manual\",\"changed\":false} title=人工锁定 bad=1"
     },
     {
       "group": "I · 全格式附件",
@@ -400,13 +400,13 @@
       "group": "J · 报表导出与格式转换",
       "name": "报表 vouchers.csv 导出",
       "pass": true,
-      "detail": "226B text/csv; charset=utf-8"
+      "detail": "460B text/csv; charset=utf-8"
     },
     {
       "group": "J · 报表导出与格式转换",
       "name": "报表 vouchers.xlsx 导出",
       "pass": true,
-      "detail": "4040B application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "detail": "6194B application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     },
     {
       "group": "J · 报表导出与格式转换",
@@ -436,7 +436,7 @@
       "group": "J · 报表导出与格式转换",
       "name": "导出文件列表与下载",
       "pass": true,
-      "detail": "files=11"
+      "detail": "files=12"
     },
     {
       "group": "J · 报表导出与格式转换",
@@ -520,7 +520,7 @@
       "group": "K · MCP / WorkBuddy 对接",
       "name": "为 MCP 查询准备一张真实凭证",
       "pass": true,
-      "detail": "id=3"
+      "detail": "id=25"
     },
     {
       "group": "K · MCP / WorkBuddy 对接",
@@ -670,7 +670,7 @@
       "group": "K · MCP / WorkBuddy 对接",
       "name": "MCP get_report 凭证报表随真实写入变化",
       "pass": true,
-      "detail": "row_count 6 → 8"
+      "detail": "row_count 10 → 12"
     },
     {
       "group": "K · MCP / WorkBuddy 对接",
@@ -682,7 +682,7 @@
       "group": "L · SSE 契约与安全边界",
       "name": "chat 标准 SSE：event 行 + content + done 收尾",
       "pass": true,
-      "detail": "events=195 kinds=session_title,content,done"
+      "detail": "events=140 kinds=session_title,content,done"
     },
     {
       "group": "L · SSE 契约与安全边界",
@@ -709,5 +709,5 @@
       "detail": "alive"
     }
   ],
-  "child_log_tail": "(node:30356) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n[auth] 注册模式 REGISTER_MODE=open（open=任何来源 / local=仅本机 / closed=关闭）\n[2026-11-17 10:02:00] [backend-watch] 守护已启动：探测 20s，重连后等 30s 同步，240s 后二次补同步\n[2026-11-17 10:02:23] [backend-watch] 网络初检：在线\n[2026-11-17 10:02:23] [backend-watch] 开始补同步（启动）\n\n[child exited null]"
+  "child_log_tail": "(node:15820) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n[zhuangdian-backend] http://127.0.0.1:8002  db=backend/data/jinli.db  set=85\n[auth] 注册模式 REGISTER_MODE=open（open=任何来源 / local=仅本机 / closed=关闭）\n[2026-11-19 06:47:13] [backend-watch] 守护已启动：探测 20s，重连后等 30s 同步，240s 后二次补同步\n[2026-11-19 06:47:33] [backend-watch] 网络初检：在线\n[2026-11-19 06:47:33] [backend-watch] 开始补同步（启动）\n\n[child exited null]"
 }

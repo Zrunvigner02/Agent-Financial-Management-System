@@ -32,7 +32,11 @@ const arg = (k, d = '') => {
 };
 const flag = (k) => argv.includes(`--${k}`);
 
-const CHANNEL = arg('channel', '拼多多');
+const RAW_CHANNEL = arg('channel', '拼多多');
+// 支持合并：--channel "淘宝,京东" / "淘宝+京东"
+const CHANNELS = RAW_CHANNEL.split(/[,，+＋\/|]/).map((x) => x.trim()).filter(Boolean);
+const CHANNEL = CHANNELS.join('+');
+const MERGED = CHANNELS.length > 1;
 const DATE = arg('date', new Date().toLocaleDateString('sv-SE'));
 const FROM = arg('from', '');
 const TO = arg('to', DATE);
@@ -64,11 +68,17 @@ const PROFILES = {
     source: '数据来源：抖音电商罗盘（每日 6:00 抓前一天）；退款为「售后完成时间」口径；推广消耗待接入巨量千川',
   },
 };
-const base = PROFILES[CHANNEL] || { suffix: `官方旗舰店（${CHANNEL}）`, source: `数据来源：${CHANNEL}商家后台（每日 6:00 抓前一天）；退款按退款成功时间统计；推广消耗待接入` };
-const profile = {
-  shop: SHOP || `${BRAND}${base.suffix}`,
-  source: base.source,
-};
+const base = PROFILES[CHANNELS[0]] || { suffix: `官方旗舰店（${CHANNELS[0]}）`, source: `数据来源：${CHANNELS[0]}商家后台（每日 6:00 抓前一天）；退款按退款成功时间统计；推广消耗待接入` };
+
+function mergedSource() {
+  const srcs = CHANNELS.map((c) => (PROFILES[c] && PROFILES[c].source) || `${c}商家后台`);
+  const who = CHANNELS.map((c) => `「${c}」`).join(' + ');
+  return `数据来源：${who} 合并口径 —— 按日汇总各渠道销售额 / 退款金额 / 件数；退款率与退后销售额按合计值重算；推广消耗待接入`;
+}
+
+const profile = MERGED
+  ? { shop: SHOP || `${BRAND}（${CHANNEL}）`, source: mergedSource() }
+  : { shop: SHOP || `${BRAND}${base.suffix}`, source: base.source };
 
 /* ---------------- 栏目定义（与模板逐列一致，顺序不可改） ---------------- */
 // type: date | money | pct | int；agg: sum | avg
@@ -110,8 +120,8 @@ function loadRows() {
   if (EMPTY || !fs.existsSync(DB_PATH)) return [];
   const db = new DatabaseSync(DB_PATH, { readOnly: true });
   try {
-    const where = ['set_id = ?', 'group_name = ?'];
-    const params = [SET_ID, CHANNEL];
+    const where = ['set_id = ?', `group_name IN (${CHANNELS.map(() => '?').join(',')})`];
+    const params = [SET_ID, ...CHANNELS];
     const from = FROM || DATE;
     where.push('date >= ?', 'date <= ?');
     params.push(from, TO);
@@ -239,7 +249,7 @@ function buildDailySheet(rows) {
 <sheetFormatPr defaultRowHeight="15"/>
 <cols>${cols}</cols>
 <sheetData>
-<row r="1" ht="22" customHeight="1"><c r="A1" s="${S.title}" t="inlineStr"><is><t xml:space="preserve">${esc(`${profile.shop}每日经营数据 · 自动抓取`)}</t></is></c></row>
+<row r="1" ht="22" customHeight="1"><c r="A1" s="${S.title}" t="inlineStr"><is><t xml:space="preserve">${esc(`${profile.shop}${MERGED ? '合并' : ''}每日经营数据 · 自动抓取`)}</t></is></c></row>
 <row r="2"><c r="A2" s="${S.sub}" t="inlineStr"><is><t xml:space="preserve">${esc(profile.source)}</t></is></c></row>
 <row r="3">${headCells}</row>
 ${dataRowsXml}
@@ -330,6 +340,6 @@ fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, buf);
 
 console.log(`已生成：${outPath}`);
-console.log(`品牌：${BRAND}｜渠道：${CHANNEL}｜店铺：${profile.shop}`);
+console.log(`品牌：${BRAND}｜渠道：${CHANNEL}${MERGED ? '（合并）' : ''}｜标题：${profile.shop}${MERGED ? '合并' : ''}每日经营数据`);
 console.log(`数据行：${rows.length} 行${EMPTY ? '（空数据测试）' : ''}｜栏目：${COLS.length} 列（与模板一致）`);
 console.log(`合计行：第 ${4 + rows.length} 行（SUM / IFERROR(AVERAGE) 公式）`);

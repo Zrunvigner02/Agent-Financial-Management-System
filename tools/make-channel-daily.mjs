@@ -126,8 +126,8 @@ const shopSuffix = (suffix) => (BRAND_PROFILE.origin === '国内生产'
   ? String(suffix).replace('海外旗舰店', '官方旗舰店')
   : suffix);
 const profile = MERGED
-  ? { shop: SHOP || `${BRAND}（${CHANNEL}）`, source: SOURCE === 'wdt' ? `${WDT_SOURCE}（合并口径：${CHANNEL}）` : mergedSource() }
-  : { shop: SHOP || `${BRAND}${shopSuffix(base.suffix)}`, source: SOURCE === 'wdt' ? WDT_SOURCE : base.source };
+  ? { shop: SHOP || `${BRAND_NAME}（${CHANNEL}）`, source: SOURCE === 'wdt' ? `${WDT_SOURCE}（合并口径：${CHANNEL}）` : mergedSource() }
+  : { shop: SHOP || `${BRAND_NAME}${shopSuffix(base.suffix)}`, source: SOURCE === 'wdt' ? WDT_SOURCE : base.source };
 
 /* ---------------- 栏目定义（与模板逐列一致，顺序不可改） ---------------- */
 // type: date | money | pct | int；agg: sum | avg
@@ -180,7 +180,12 @@ function loadRows() {
       const marked = db.prepare(`SELECT COUNT(*) AS n FROM sales_daily
         WHERE set_id = ? AND group_name IN (${CHANNELS.map(() => '?').join(',')}) AND COALESCE(brand,'') <> ''`)
         .get(SET_ID, ...CHANNELS)?.n || 0;
-      if (marked > 0) { where.push('COALESCE(brand, ?) = ?'); params.push('', BRAND); }
+      if (marked > 0) {
+        // 库里存的是中文名（德国世家），而品牌参数可能是代号（drhauschka）—— 两种都认
+        const names = [...new Set([BRAND, BRAND_NAME].filter(Boolean))];
+        where.push(`COALESCE(brand,'') IN (${names.map(() => '?').join(',')})`);
+        params.push(...names);
+      }
     }
     const rows = db.prepare(`SELECT date, SUM(amount) amount, SUM(return_amount) refund, SUM(qty) qty
       FROM sales_effective WHERE ${where.join(' AND ')} GROUP BY date ORDER BY date`).all(...params);

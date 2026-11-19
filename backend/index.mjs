@@ -16,6 +16,7 @@ import * as ord from './orders.mjs';
 import { pickToolNames, needsFullRetry } from './toolrouter.mjs';
 import * as ent from './enterprise.mjs';
 import * as wecom from './wecom.mjs';
+import { classifyIntent, routeAction } from './intent-router.mjs';
 import * as fin from './finance.mjs';
 import * as wecomBot from './wecom-bot.mjs';
 import * as sessionTitle from './session-title.mjs';
@@ -1039,6 +1040,11 @@ async function handle(req, res) {
   }
 
   // ---------------- 企微多人机器人（绑定与状态，仅管理员） ----------------
+  // 意图路由：判定该交给财务系统智能体还是本地开发助理（规则实现，零 token）
+  if (p === '/api/agent/route' && (method === 'POST' || method === 'GET')) {
+    const text = method === 'GET' ? (q.text || q.q || '') : (body && (body.message || body.text)) || '';
+    return reply(res, { code: 0, data: routeAction(text) });
+  }
   if (p === '/api/wecom/status' && method === 'GET') return reply(res, wecomBot.botStatus());
   if (p === '/api/wecom/users' && method === 'GET') {
     return reply(res, { code: 0, message: '', data: wecomBot.listBotUsers() });

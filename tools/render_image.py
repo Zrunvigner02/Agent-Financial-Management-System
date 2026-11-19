@@ -87,7 +87,7 @@ def main():
         d.rectangle((0, 0, canvas_w, 6), fill=PLUM)
         d.text((margin, 20), clip(title, f_title, table_w), font=f_title, fill=PLUM)
         stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        sub = "振颜丽舍 · 妆点管账"
+        sub = "振颜丽舍 · 振颜丽舍"
         if period:
             sub += " ｜ 期间 " + period
         sub += " ｜ " + stamp + " ｜ 第 %d/%d 页" % (page_no, page_count)

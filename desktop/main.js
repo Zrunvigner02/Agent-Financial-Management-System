@@ -1,6 +1,6 @@
 'use strict';
 /**
- * 妆点管账 · 本地离线版 —— Electron 桌面壳
+ * 振颜丽舍 · 本地离线版 —— Electron 桌面壳
  * 职责：静默拉起 8000 后端 + 5173 前端、免登录注入本地会话、托盘常驻、退出清理。
  * 约束：不弹任何终端窗口；不把凭据写进日志；服务若已在运行则复用而非抢占端口。
  */
@@ -31,7 +31,6 @@ let recovering = false;   // 后端自愈守护的重入保护
 let auth = null;         // 登录态（仅内存）
 let setId = '';
 let headerHookInstalled = false;
-let liveRefreshInstalled = false;
 const owned = [];        // 本进程亲自拉起的服务；退出时只清理这些
 
 function stamp() {
@@ -213,51 +212,40 @@ function installHeaderHook() {
 }
 
 /**
- * 会话活跃度监听：页面本身不轮询，本地助理新写入的对话要刷新才看得到。
- * 这里注入一个轻量轮询（7 秒一次 /api/agent/activity），有变化时右下角浮出提示条，
- * 用户点一下才 reload —— 不打断正在输入或正在流式回答的对话。
+ * 实时同步改由页面脚本 upstream/live-sync.js 统一负责（切 Tab 即刷新、
+ * 停留自动对齐、生成中不打断、刷新后恢复滚动与草稿）。
+ * 桌面壳这里不再注入"点此刷新"提示条，避免两套逻辑互相打架。
  */
-const LIVE_REFRESH_JS = `(() => {
-  if (window.__jlLiveTipInstalled) return;
-  window.__jlLiveTipInstalled = true;
-  let sig = '';
-  let tip = null;
-  const showTip = () => {
-    if (tip && document.body.contains(tip)) return;
-    tip = document.createElement('div');
-    tip.textContent = '有新的助理对话，点此刷新';
-    tip.style.cssText = [
-      'position:fixed', 'right:20px', 'bottom:20px', 'z-index:2147483647',
-      'background:#742a54', 'color:#fff', 'font-size:13px', 'line-height:1',
-      'padding:10px 14px', 'border-radius:999px', 'cursor:pointer',
-      'box-shadow:0 6px 20px rgba(0,0,0,.25)', 'user-select:none',
-      'font-family:-apple-system,"Microsoft YaHei",sans-serif'
-    ].join(';');
-    tip.onclick = () => location.reload();
-    document.body.appendChild(tip);
-  };
-  const check = async () => {
-    try {
-      const r = await fetch('/api/agent/activity', { cache: 'no-store' });
-      if (!r.ok) return;
-      const body = await r.json();
-      const d = (body && body.data) || {};
-      const next = String(d.total || 0) + ':' + String(d.last_id || 0);
-      if (!sig) { sig = next; return; }
-      if (next !== sig) { sig = next; showTip(); }
-    } catch (e) { /* 后端重启期间忽略 */ }
-  };
-  setInterval(check, 7000);
-})()`;
 
-function installLiveRefresh() {
-  if (liveRefreshInstalled || !win) return;
-  liveRefreshInstalled = true;
-  win.webContents.on('did-finish-load', () => {
-    if (!win || win.isDestroyed()) return;
-    win.webContents.executeJavaScript(LIVE_REFRESH_JS).catch(() => {});
-  });
-  log('助理会话活跃度提示已启用');
+/**
+ * 旺店通导出自动入库：常驻监控 D://振颜丽舍//wdt//每日导出
+ * 与桌面端同生命周期，退出应用时一并停止（owned 列表）。
+ */
+function startWdtWatcher() {
+  const script = path.join(ROOT, 'tools', 'wdt-watch.mjs');
+  if (!fs.existsSync(script)) return;
+  try {
+    const child = spawn(NODE_EXE, [script, '--watch', '--auto-export'], {
+      cwd: ROOT, env: loadEnv(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const pipe = (stream, tag) => {
+      let buf = '';
+      stream.on('data', (chunk) => {
+        buf += String(chunk);
+        const lines = buf.split(/\r?\n/);
+        buf = lines.pop() || '';
+        for (const l of lines.slice(-2)) if (l.trim()) log(`  [${tag}] ${l.trim().slice(0, 300)}`);
+      });
+    };
+    pipe(child.stdout, 'wdt');
+    pipe(child.stderr, 'wdt');
+    child.on('exit', (code) => log(`旺店通监控进程退出 code=${code}`));
+    child.on('error', (e) => log(`旺店通监控启动失败: ${e.message}`));
+    owned.push(child);
+    log('旺店通目录监控已启动');
+  } catch (e) {
+    log(`旺店通监控异常：${e.message}`);
+  }
 }
 
 // ---------- 窗口 / 托盘 ----------
@@ -267,7 +255,7 @@ function createWindow() {
     height: 940,
     minWidth: 1080,
     minHeight: 680,
-    title: '妆点管账 · 本地版',
+    title: '振颜丽舍 · 本地版',
     icon: ICON,
     backgroundColor: '#742a54',
     show: false,
@@ -286,7 +274,7 @@ function createWindow() {
     win.hide();                       // 关窗口 = 收进托盘，服务继续，重开秒进
     try {
       tray?.displayBalloon({
-        title: '妆点管账',
+        title: '振颜丽舍',
         content: '已最小化到托盘，双击图标可重新打开；右键可完全退出',
       });
     } catch { /* 部分系统不支持气泡 */ }
@@ -301,11 +289,11 @@ function createWindow() {
 function buildTray() {
   const image = nativeImage.createFromPath(ICON);
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
-  tray.setToolTip('妆点管账 · 本地离线版');
+  tray.setToolTip('振颜丽舍 · 本地离线版');
   const refreshMenu = () => {
     const settings = app.getLoginItemSettings();
     tray.setContextMenu(Menu.buildFromTemplate([
-      { label: '打开妆点管账', click: () => { win?.show(); win?.focus(); } },
+      { label: '打开振颜丽舍', click: () => { win?.show(); win?.focus(); } },
       { label: '重新加载页面', click: () => win?.reload() },
       { label: '报表导出中心', click: () => { win?.show(); win?.focus(); win?.loadURL(`${ORIGIN}/export.html`); } },
       { type: 'separator' },
@@ -357,7 +345,6 @@ async function bootFlow(tag = '启动') {
     auth = await desktopLogin();
     setId = await resolveSetId(auth.token);
     installHeaderHook();
-    installLiveRefresh();
     setStatus(`${tag}：正在进入数据看板…`, 86);
 
     // 先在 http 源下建立页面上下文，注入会话，再进入受路由守卫保护的业务页
@@ -369,6 +356,7 @@ async function bootFlow(tag = '启动') {
     setStatus('就绪', 100);
     win.show();
     win.focus();
+    startWdtWatcher();
     log(`boot ok: backend=${b} frontend=${f} set=${setId} tokenLen=${String(auth.token).length}`);
   } catch (err) {
     log(`BOOT ERROR: ${err && err.stack ? err.stack : err}`);
@@ -408,17 +396,26 @@ if (!app.requestSingleInstanceLock()) {
     // 而 5173 仍活着 → 页面能开但接口全 502。每 20 秒探测一次，失联就由 Electron
     // 自己重新拉起后端并纳入 owned 列表（下次「退出并停止服务」会一并停止）。
     // 这样即使外部托管的后端被回收，应用也能自动恢复到完全自管理的状态。
+    // 两个服务都要守：后端挂了页面全 502，前端挂了刷新就白屏。
+    // 之前只守后端，前端进程被回收后只能靠用户重开应用。
+    const WATCH = [
+      { name: '后端', port: BACK_PORT, script: path.join('backend', 'index.mjs') },
+      { name: '前端', port: FRONT_PORT, script: 'server.mjs' },
+    ];
     setInterval(async () => {
       if (quitting || booting || recovering) return;
-      if (await probe(BACK_PORT, '/__local/health')) return;
-      recovering = true;
-      try {
-        log(`后端守护：:${BACK_PORT} 失联，自动拉起`);
-        await ensureService('后端守护', BACK_PORT, path.join('backend', 'index.mjs'), '/__local/health');
-      } catch (e) {
-        log(`后端守护拉起失败：${e.message}`);
-      } finally {
-        recovering = false;
+      for (const w of WATCH) {
+        if (await probe(w.port, '/__local/health')) continue;
+        recovering = true;
+        try {
+          log(`${w.name}守护：:${w.port} 失联，自动拉起`);
+          await ensureService(`${w.name}守护`, w.port, w.script, '/__local/health');
+        } catch (e) {
+          log(`${w.name}守护拉起失败：${e.message}`);
+        } finally {
+          recovering = false;
+        }
+        break;   // 一次只修一个，避免两个进程同时抢端口
       }
     }, 20000);
   });

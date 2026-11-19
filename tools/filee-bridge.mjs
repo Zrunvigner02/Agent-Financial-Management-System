@@ -108,7 +108,7 @@ function renderRtf(t, meta) {
   return Buffer.from(`{\\rtf1\\ansi\\ansicpg936\\deff0\\uc1
 {\\fonttbl{\\f0\\fnil Microsoft YaHei;}{\\f1\\fnil SimSun;}}
 \\viewkind4\\pard\\f0\\fs32\\b ${rtfText(t.title)}\\b0\\par
-\\fs18 ${rtfText('振颜丽舍 · 妆点管账 ｜ 期间 ' + meta.period + ' ｜ ' + new Date().toLocaleString('zh-CN'))}\\par
+\\fs18 ${rtfText('振颜丽舍 · 振颜丽舍 ｜ 期间 ' + meta.period + ' ｜ ' + new Date().toLocaleString('zh-CN'))}\\par
 \\par
 ${body || '（本期暂无数据）\\par'}
 }`, 'ascii');
@@ -126,7 +126,7 @@ function renderSvg(t, meta) {
     `<rect width="100%" height="100%" fill="#ffffff"/>`,
     `<rect width="100%" height="6" fill="#742a54"/>`,
     `<text x="24" y="40" font-family="Microsoft YaHei,sans-serif" font-size="24" fill="#742a54">${hx(t.title)}</text>`,
-    `<text x="24" y="66" font-family="Microsoft YaHei,sans-serif" font-size="12" fill="#96667e">${hx('振颜丽舍 · 妆点管账 ｜ ' + meta.period + ' ｜ ' + new Date().toLocaleString('zh-CN'))}</text>`,
+    `<text x="24" y="66" font-family="Microsoft YaHei,sans-serif" font-size="12" fill="#96667e">${hx('振颜丽舍 · 振颜丽舍 ｜ ' + meta.period + ' ｜ ' + new Date().toLocaleString('zh-CN'))}</text>`,
     `<rect x="24" y="${top}" width="${width - 48}" height="${headH}" fill="#f8e7ef"/>`,
   ];
   let x = 24;
@@ -164,7 +164,7 @@ function renderDocx(t, meta) {
   const doc = `${XML_DECL}
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
 <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="32"/></w:rPr><w:t>${xml(t.title)}</w:t></w:r></w:p>
-<w:p><w:r><w:t>${xml('振颜丽舍 · 妆点管账 ｜ 期间 ' + meta.period + ' ｜ ' + new Date().toLocaleString('zh-CN'))}</w:t></w:r></w:p>
+<w:p><w:r><w:t>${xml('振颜丽舍 · 振颜丽舍 ｜ 期间 ' + meta.period + ' ｜ ' + new Date().toLocaleString('zh-CN'))}</w:t></w:r></w:p>
 <w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
 <w:top w:val="single" w:sz="4" w:color="EAD9E2"/><w:bottom w:val="single" w:sz="4" w:color="EAD9E2"/>
 <w:left w:val="single" w:sz="4" w:color="EAD9E2"/><w:right w:val="single" w:sz="4" w:color="EAD9E2"/>
@@ -208,7 +208,7 @@ function renderOdf(t, meta, kind) {
   const container = kind === 'ods' ? 'spreadsheet' : 'text';
   const inner = kind === 'ods'
     ? odfTable(t)
-    : `<text:h text:outline-level="1">${xml(t.title)}</text:h><text:p>${xml('振颜丽舍 · 妆点管账 ｜ 期间 ' + meta.period)}</text:p>${odfTable(t)}`;
+    : `<text:h text:outline-level="1">${xml(t.title)}</text:h><text:p>${xml('振颜丽舍 · 振颜丽舍 ｜ 期间 ' + meta.period)}</text:p>${odfTable(t)}`;
   const content = `${XML_DECL}
 <office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2"><office:body><office:${container}>${inner}</office:${container}></office:body></office:document-content>`;
   // mimetype 必须是 zip 第一项且不压缩（zipStore 全 store，符合 ODF 规范）

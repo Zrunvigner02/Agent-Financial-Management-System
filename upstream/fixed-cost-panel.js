@@ -169,12 +169,16 @@
     const rows = [...groups.entries()].map(([g, list]) => {
       const sum = list.reduce((s, t) => s + t.amount, 0);
       const items = list.map((t) => {
-        const left = t.resigned_from ? `<span class="zd-fc-badge left">已离职${t.resigned_from ? ` ${t.resigned_from}` : ''}</span>` : '';
+        const stopAt = t.stopped_at || '';
+        const left = (stopAt || t.resigned_from)
+          ? `<span class="zd-fc-badge left">已停用 ${stopAt || t.resigned_from}</span>` : '';
+        const pror = t.prorated && t.prorate_days
+          ? `<span class="zd-fc-badge left">按 ${t.prorate_days} 天折算</span>` : '';
         const settled = t.tags && t.tags['钱货两讫'] ? '<span class="zd-fc-badge settle">钱货两讫</span>' : '';
         const adj = t.overridden ? '<em>本月已调</em>' : '';
         return `<div class="zd-fc-row" data-act="item" data-id="${t.id}" title="点开看明细">
           <span class="zd-fc-name">${t.person || t.name}${adj}</span>
-          ${left}${settled}${statusBadge(t)}
+          ${left}${pror}${settled}${statusBadge(t)}
           <span class="zd-fc-amt">${money(t.amount)}</span>
         </div>`;
       }).join('');

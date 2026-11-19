@@ -65,7 +65,7 @@
   }
 
   async function loadSalesReport(from, to) {
-    const j = await api(`/api/enterprise/sales?from=${from}&to=${to}&limit=1000`);
+    const j = await api(`/api/enterprise/sales?from=${from}&to=${to}&limit=5000`);
     if (j.code !== 0) throw new Error(j.message || '加载失败');
     return (j.data && j.data.items) || [];
   }
@@ -85,14 +85,21 @@
       const j = await api(`/api/reports/income?period=${p}`);
       if (j.code !== 0 || !j.data) continue;
       const rows = j.data.rows || j.data.items || [];
-      const get = (kw) => { const r = rows.find((x) => String(x.item || x.name || '').includes(kw)); return r ? Number(r.current || r.amount || 0) : 0; };
+      // 利润表返回的是 v1(本期)/v2(本年累计)，不是 current/amount —— 字段名读错会一律显示 0
+      const get = (kw) => {
+        const r = rows.find((x) => String(x.item || x.name || '').includes(kw));
+        if (!r) return 0;
+        const v = r.current ?? r.v1 ?? r.amount ?? 0;
+        return Number(v) || 0;
+      };
       const revenue = get('营业收入');
       const cost = get('营业成本');
       const expense = get('销售费用') + get('管理费用') + get('财务费用');
       const profit = get('净利润');
       out.push({ date: `${p}-01`, period: p, amount: revenue, ret: 0, fee: expense, net: profit, cost });
     }
-    return out;
+    const total = out.reduce((a, x) => a + Math.abs(x.amount) + Math.abs(x.net) + Math.abs(x.fee), 0);
+    return { items: out, empty: total === 0 };
   }
 
   function aggregate(items, dim, keyFn) {
@@ -210,11 +217,44 @@
         const all = (j.data && (j.data.items || j.data.list)) || [];
         st.rows = all.filter((x) => { const p = String(x.period || x.created_at || '').slice(0, 10); return !p || (p >= st.from && p <= st.to); });
       } else if (st.caliber === 'finance') {
-        const items = await loadFinanceReport(st.from, st.to);
-        st.note = '财务口径按已审核/已记账凭证的月度利润表汇总（草稿不计入）。';
-        const agg = st.cat === 'channel' ? null : aggregate(items, st.dim, (it) => bucketOf(st.dim, it.date));
-        if (agg) { st.rows = agg.list; st.kpi = agg.total; }
-        else { st.rows = []; st.kpi = { amount: 0, ret: 0, fee: 0, net: 0, cnt: 0 }; }
+        const fin = await loadFinanceReport(st.from, st.to);
+        let items = fin.items;
+        if (fin.empty) {
+          // 本期一条凭证都没有 → 用销售实发数据实时算，前端不留空；
+          // 凭证一旦记账会自动切回凭证口径。
+          const raw = (await loadSalesReport(st.from, st.to)).map((x) => ({
+            date: x.date,
+            group_name: x.group_name || '未分组',
+            amount: Number(x.amount || 0),
+            ret: Number(x.return_amount || 0),
+            cost: Number(x.cost || 0),
+            fee: Number(x.cost || 0) + Number(x.fee || 0),
+            net: Number(x.net_profit || 0),
+          }));
+          items = raw;
+          st.basis = 'sales';
+          st.note = raw.length
+            ? '本期尚无已审核/已记账凭证，已按旺店通销售数据（实际发生）实时计算：费用=营业成本+平台费，净利润=销售额−成本−平台费−邮资。凭证记账后自动切回凭证口径。'
+            : '本期既无凭证，也没有销售数据。';
+          // 成本率异常（成本高于销售额）通常是 ERP 成本价没维护，提醒核对，不静默
+          const cSum = raw.reduce((a, x) => a + Number(x.cost || 0), 0);
+          const aSum = raw.reduce((a, x) => a + Number(x.amount || 0), 0);
+          if (aSum > 0 && cSum > aSum) {
+            st.note += `　⚠ 本期营业成本 ¥${money(cSum)} 高于销售额 ¥${money(aSum)}（成本率 ${Math.round((cSum / aSum) * 100)}%），请核对旺店通商品成本价。`;
+          }
+        } else {
+          st.basis = 'voucher';
+          st.note = '财务口径按已审核/已记账凭证的月度利润报表汇总（草稿不计入）。';
+        }
+        if (!items.length) {
+          st.rows = []; st.kpi = { amount: 0, ret: 0, fee: 0, net: 0, cnt: 0 };
+        } else if (st.cat === 'channel') {
+          const agg = aggregate(items, st.dim, (it) => it.group_name || '未分组');
+          st.rows = agg.list.sort((a, b) => b.amount - a.amount); st.kpi = agg.total;
+        } else {
+          const agg = aggregate(items, st.dim, (it) => bucketOf(st.dim, it.date));
+          st.rows = agg.list; st.kpi = agg.total;
+        }
       } else {
         const raw = (await loadSalesReport(st.from, st.to)).map((x) => ({ ...x, ret: x.return_amount, net: x.net_profit, date: x.date }));
         allSales = raw;
@@ -335,27 +375,15 @@
       ${body}`;
   }
 
-  // 财务主页看板：顶部注入时间维度切换条（点击打开对应维度汇总）
+  // 财务主页看板：不再注入「时间维度」切换条。
+  // 原因：财务看板本身按月取数，点「三年」只能打开报表中心，很容易被误认为看板切换；
+  // 维度切换统一走左侧「报表」（报表中心内有 日/半月/月/季/半年/年/三年/自定义）。
+  // 这里只负责把旧版本残留的那条清掉，避免老页面缓存里还留着。
   function ensureDashBar() {
-    const onDash = location.pathname === '/dashboard' && !document.querySelector('.zd-sb.show') && !document.querySelector('.zd-rp.show');
-    let bar = document.getElementById('zd-dash-dims');
-    if (!onDash) { if (bar) bar.remove(); return; }
-    const main = document.querySelector('.app-main');
-    if (!main) return;
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'zd-dash-dims';
-      bar.className = 'zd-dash-dims';
-      bar.innerHTML = '<span class="t">时间维度</span>' + DIMS.map(([k, l]) => `<span class="c" data-x="${k}">${l}</span>`).join('');
-      bar.addEventListener('click', (e) => {
-        const c = e.target.closest('[data-x]');
-        if (c) open('finance', c.getAttribute('data-x'));
-      });
-    }
-    if (main.firstElementChild !== bar) main.insertBefore(bar, main.firstElementChild || null);
+    const bar = document.getElementById('zd-dash-dims');
+    if (bar) bar.remove();
   }
-  setInterval(ensureDashBar, 800);
-  new MutationObserver(ensureDashBar).observe(document.body, { childList: true, subtree: true });
+  ensureDashBar();
 
   document.addEventListener('click', (e) => {
     if (!st.open) return;

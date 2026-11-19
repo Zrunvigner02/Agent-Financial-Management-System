@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * aibot-sync —— WorkBuddy 企微 AIBot 会话 → 妆点智能体会话历史
+ * aibot-sync —— WorkBuddy 企微 AIBot 会话 → 智能体会话历史
  *
  * 背景：企微接入走的是 WorkBuddy 自带「企微 AIBot」（websocket 长连接），
  *      对话记录存在 WorkBuddy 侧（workbuddy.db + projects/*.jsonl），
- *      本脚本把它按日期合并进项目前端的「妆点智能体」会话，便于在桌面端查看。
+ *      本脚本把它按日期合并进项目前端的「智能体」会话，便于在桌面端查看。
  *
  * 规则：
  * 1. 同一天的所有企微 AIBot 对话，合并为一条会话：id = wecom-aibot-YYYYMMDD
@@ -258,7 +258,7 @@ function decorateMedia(text, day) {
 /* ---------------- 数据库 ---------------- */
 function openDb() {
   if (!fs.existsSync(DB_PATH)) {
-    throw new Error(`找不到账套数据库：${DB_PATH}（请先启动一次妆点本地后端）`);
+    throw new Error(`找不到账套数据库：${DB_PATH}（请先启动一次振颜丽舍本地后端）`);
   }
   const db = new DatabaseSync(DB_PATH);
   db.exec('PRAGMA busy_timeout = 5000;');

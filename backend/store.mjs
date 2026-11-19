@@ -700,6 +700,25 @@ export function readEnv(name) {
   }
 }
 
+/**
+ * 有效销售视图：同一 (set_id, date, 渠道) 上，只要旺店通(wdt)有数据，
+ * 就忽略其他来源（企微同步/手工导入的旧口径），避免两套数据重复相加。
+ * 只读视图，不改任何原始行 —— 历史数据一条不删。
+ */
+db.exec(`
+CREATE VIEW IF NOT EXISTS sales_effective AS
+SELECT s.* FROM sales_daily s
+WHERE NOT (
+  s.source <> 'wdt' AND EXISTS (
+    SELECT 1 FROM sales_daily d
+    WHERE d.set_id = s.set_id
+      AND d.date = s.date
+      AND COALESCE(d.group_name, '') = COALESCE(s.group_name, '')
+      AND d.source = 'wdt'
+  )
+);
+`);
+
 initialize();
 
 export const all = (sql, ...params) => db.prepare(sql).all(...params);

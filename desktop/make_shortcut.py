@@ -14,7 +14,7 @@ ARGS = '"' + os.path.join(DESK, 'launcher.pyw') + '"'
 WORKDIR = DESK
 # 用独立文件名的 ico：避开 Explorer 对 desktop/icon.ico 的旧图标缓存（2026-11-11）
 ICON = os.path.join(DESK, 'zhuangdian-icon.ico')
-NAME = '妆点管账 · 本地离线版'
+NAME = '振颜丽舍 · 本地离线版'
 
 # LinkFlags
 HAS_LINK_TARGET_ID_LIST = 0x00000001
@@ -102,7 +102,7 @@ def build_lnk():
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-        os.environ.get('USERPROFILE', ''), 'Desktop', '妆点管账.lnk')
+        os.environ.get('USERPROFILE', ''), 'Desktop', '振颜丽舍.lnk')
     data = build_lnk()
     with open(out, 'wb') as f:
         f.write(data)

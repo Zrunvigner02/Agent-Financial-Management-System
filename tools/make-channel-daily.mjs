@@ -24,6 +24,18 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DB_PATH = process.env.ZD_DB_PATH ? path.resolve(process.env.ZD_DB_PATH) : path.join(ROOT, 'backend', 'data', 'jinli.db');
 const SET_ID = Number(process.env.ZD_SET_ID || 85);
 
+/** sales_daily 是否已有 brand 列（老库没有，导入旺店通后会补上） */
+function detectBrandColumn() {
+  try {
+    const d = new DatabaseSync(DB_PATH);
+    d.exec('PRAGMA query_only = ON');
+    const has = d.prepare('PRAGMA table_info(sales_daily)').all().some((c) => c.name === 'brand');
+    d.close();
+    return has;
+  } catch { return false; }
+}
+const HAS_BRAND = detectBrandColumn();
+
 /* ---------------- 参数 ---------------- */
 const argv = process.argv.slice(2);
 const arg = (k, d = '') => {
@@ -41,9 +53,41 @@ const DATE = arg('date', new Date().toLocaleDateString('sv-SE'));
 const FROM = arg('from', '');
 const TO = arg('to', DATE);
 const EMPTY = flag('empty');
-const BRAND = arg('brand', 'drhauschka');
+const RAW_BRAND = arg('brand', 'drhauschka');
 const SHOP = arg('shop', '');
 const OUT = arg('out', '');
+const SOURCE = arg('source', '');   // wdt = 旺店通导出
+
+/* ---------------- 品牌档案（旺店通两条货源线） ---------------- */
+const BRAND_PROFILES = {
+  drhauschka: {
+    code: 'drhauschka', name: '德国世家', origin: '跨境进口',
+    alias: ['德国世家', '世家', 'dr.hauschka', 'dh', '德世'],
+  },
+  PF79: {
+    code: 'PF79', name: 'PF79', origin: '跨境进口',
+    alias: ['pf79', 'pf-79', 'pf'],
+  },
+  歌剧魅影: {
+    code: '歌剧魅影', name: '歌剧魅影', origin: '国内生产',
+    alias: ['opera', 'opera魅影', '魅影', 'opera phantom'],
+  },
+};
+
+function resolveBrand(raw) {
+  const k = String(raw || '').trim();
+  if (BRAND_PROFILES[k]) return BRAND_PROFILES[k];
+  const low = k.toLowerCase();
+  for (const p of Object.values(BRAND_PROFILES)) {
+    if (p.name.toLowerCase() === low || p.code.toLowerCase() === low) return p;
+    if (p.alias.some((a) => a.toLowerCase() === low)) return p;
+  }
+  return { code: k, name: k, origin: '', alias: [] };
+}
+
+const BRAND_PROFILE = resolveBrand(RAW_BRAND);
+const BRAND = BRAND_PROFILE.code;
+const BRAND_NAME = BRAND_PROFILE.name;
 
 /* ---------------- 渠道档案 ---------------- */
 const PROFILES = {
@@ -76,9 +120,14 @@ function mergedSource() {
   return `数据来源：${who} 合并口径 —— 按日汇总各渠道销售额 / 退款金额 / 件数；退款率与退后销售额按合计值重算；推广消耗待接入`;
 }
 
+const WDT_SOURCE = '数据来源：旺店通ERP导出（销售订单明细，按支付时间统计）；退款按退款完成时间；推广消耗待接入万相台/千川/京准通';
+// 跨境进口 → 海外旗舰店；国内生产 → 官方旗舰店
+const shopSuffix = (suffix) => (BRAND_PROFILE.origin === '国内生产'
+  ? String(suffix).replace('海外旗舰店', '官方旗舰店')
+  : suffix);
 const profile = MERGED
-  ? { shop: SHOP || `${BRAND}（${CHANNEL}）`, source: mergedSource() }
-  : { shop: SHOP || `${BRAND}${base.suffix}`, source: base.source };
+  ? { shop: SHOP || `${BRAND}（${CHANNEL}）`, source: SOURCE === 'wdt' ? `${WDT_SOURCE}（合并口径：${CHANNEL}）` : mergedSource() }
+  : { shop: SHOP || `${BRAND}${shopSuffix(base.suffix)}`, source: SOURCE === 'wdt' ? WDT_SOURCE : base.source };
 
 /* ---------------- 栏目定义（与模板逐列一致，顺序不可改） ---------------- */
 // type: date | money | pct | int；agg: sum | avg
@@ -125,8 +174,16 @@ function loadRows() {
     const from = FROM || DATE;
     where.push('date >= ?', 'date <= ?');
     params.push(from, TO);
+    // 品牌维度：库里一旦有品牌标记（旺店通导入后会写），就按品牌过滤；
+    // 老数据没有品牌列/全为空时保持整渠道口径，避免突然查不到数。
+    if (HAS_BRAND) {
+      const marked = db.prepare(`SELECT COUNT(*) AS n FROM sales_daily
+        WHERE set_id = ? AND group_name IN (${CHANNELS.map(() => '?').join(',')}) AND COALESCE(brand,'') <> ''`)
+        .get(SET_ID, ...CHANNELS)?.n || 0;
+      if (marked > 0) { where.push('COALESCE(brand, ?) = ?'); params.push('', BRAND); }
+    }
     const rows = db.prepare(`SELECT date, SUM(amount) amount, SUM(return_amount) refund, SUM(qty) qty
-      FROM sales_daily WHERE ${where.join(' AND ')} GROUP BY date ORDER BY date`).all(...params);
+      FROM sales_effective WHERE ${where.join(' AND ')} GROUP BY date ORDER BY date`).all(...params);
     return rows.map((r) => {
       const amount = Number(r.amount || 0);
       const refund = Number(r.refund || 0);

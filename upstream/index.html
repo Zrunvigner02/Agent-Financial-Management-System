@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>妆点管账 · 本地版</title>
+    <title>振颜丽舍 · 本地版</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <!-- 本地版免登录：在 SPA bundle 之前同步注入登录态到 localStorage。
          仅在本地后端可用时生效；失败则静默跳过，回退到手动登录页。 -->
     <script src="/autologin.js"></script>
-    <script type="module" crossorigin src="/assets/index-CfiOBNy5.js"></script>
+    <script type="module" crossorigin src="/assets/index-CfiOBNy5.js?v=20261119c"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DBO0WYGM.css">
   </head>
   <body>
@@ -91,9 +91,11 @@
     <!-- 销售看板（独立统计口径，顶部 Tab 并列，整页切换） -->
     <script src="/sales-board.js" defer></script>
     <!-- 报表中心（财务/销售双口径，多时间维度） -->
-    <script src="/reports.js" defer></script>
+    <script src="/reports.js?v=20261119g" defer></script>
     <!-- 智能体聊天媒体：报表/图片可点击打开 -->
     <script src="/agent-media.js" defer></script>
+    <!-- 实时同步：切 Tab 即刷新，停留自动对齐（不再需要手动点刷新） -->
+    <script src="/live-sync.js?v=20261119b" defer></script>
     <!-- 订单 / 固定支出：左侧菜单入口 -->
     <script>
       (function () {

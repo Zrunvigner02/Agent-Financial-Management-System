@@ -1,5 +1,5 @@
 /**
- * 妆点管账 · 报表导出中心
+ * 振颜丽舍 · 报表导出中心
  *  - 内置生成 CSV / XLSX / JSON / Markdown / HTML（零第三方依赖，XLSX 为手写 OOXML zip）
  *  - Filee（外部 CLI，进程级集成）负责把导出文件再转换成 PDF / DOCX / ODS / 图片等任意格式
  *  - 所有产物落在 .local/exports/，文件名与参数均做白名单校验，spawn 不用 shell
@@ -294,9 +294,9 @@ td{padding:10px 14px;border-top:1px solid #f4e5ec;font-size:13px}td.n{text-align
 tr:nth-child(even) td{background:#fffbfd}footer{margin-top:20px;color:#a98498;font-size:12px}
 @media print{body{background:#fff;padding:12px}table{box-shadow:none}}
 </style></head><body>
-<header><div class="logo">&yen;</div><div><h1>${htmlEsc(table.title)}</h1><div class="meta">振颜丽舍 · 妆点管账 ｜ 期间 ${htmlEsc(meta.period)} ｜ ${new Date().toLocaleString('zh-CN')}</div></div></header>
+<header><div class="logo">&yen;</div><div><h1>${htmlEsc(table.title)}</h1><div class="meta">振颜丽舍 · 振颜丽舍 ｜ 期间 ${htmlEsc(meta.period)} ｜ ${new Date().toLocaleString('zh-CN')}</div></div></header>
 <table><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${table.columns.length}">本期暂无数据</td></tr>`}</tbody></table>
-<footer>本报表由妆点管账本地端生成，数据仅保存在本机。</footer></body></html>`;
+<footer>本报表由振颜丽舍本地端生成，数据仅保存在本机。</footer></body></html>`;
   return Buffer.from(html, 'utf8');
 }
 
@@ -406,7 +406,7 @@ export function buildReport({ kind = 'vouchers', period = '', format = 'csv', se
   const { table, period: p } = reportTable({ kind, period, setId });
   const meta = { kind, period: p, format, setId };
   const content = RENDERERS[format](table, meta);
-  const filename = `妆点管账_${table.title}_${p}.${format}`;
+  const filename = `振颜丽舍_${table.title}_${p}.${format}`;
   fs.mkdirSync(EXPORT_DIR, { recursive: true });
   const saved = path.join(EXPORT_DIR, filename);
   fs.writeFileSync(saved, content);

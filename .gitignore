@@ -38,3 +38,15 @@ data/attachments/
 release/*.zip
 .backup-*/
 data/*.lock
+
+# ===== RPA 本机校准（每台机器屏幕/窗口都不同，绝不入库）=====
+tools/rpa/wdt-coords.ini
+tools/rpa/wdt-coords-check.txt
+tools/rpa/wdt-export.log
+tools/rpa/*.out
+
+# AutoHotkey 运行时（体积大，按 docs/WDT-OPENAPI.md 说明自行下载）
+tools/bin/
+
+# 备份区（企微导出文件 + 数据库快照，含业务数据，体积大）
+备份/

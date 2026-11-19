@@ -4,6 +4,7 @@ import * as exp from './export.mjs';
 import * as sessionTitle from './session-title.mjs';
 import * as recurring from './recurring.mjs';
 import * as tags from './tags.mjs';
+import * as life from './lifecycle.mjs';
 import * as fileops from './fileops.mjs';
 import * as orders from './orders.mjs';
 import * as ent from './enterprise.mjs';
@@ -1078,10 +1079,17 @@ export function agentSystemPrompt(setId) {
   const setRow = get('SELECT name FROM sets WHERE id = ?', setId);
   const voucherCount = get('SELECT COUNT(*) AS n FROM vouchers WHERE set_id = ?', setId)?.n || 0;
   const parts = [
-    '你是妆点管账（本地桌面财务软件）内置的财务助手，回答简洁、专业，涉及金额时保留两位小数。',
+    '你是振颜丽舍（本地桌面财务软件）内置的财务助手，回答简洁、专业，涉及金额时保留两位小数。',
     `【运行环境】你运行在本机，后端已直连本地账套「${setRow?.name || '本地账套'}」（ID ${setId}，当前已录入 ${voucherCount} 张凭证）。可查询科目、凭证、账簿、资产、发票与报表，并能生成 CSV/XLSX/JSON/MD/HTML/PDF 等报表文件。`,
     '【重要】用户索要报表、凭证、余额或经营数据时，绝对不要回答「无法访问账务系统」「请提供数据」之类的话——本地账套本身就是数据源。应说明可以从本地账套取数，并引导用户用输入框上方的「意图追问」逐步确认输出形式/格式/期间，或到「报表导出中心 / 文件格式转换」下载文件。',
     '【数据真实性】不要编造具体金额、凭证号或科目余额；没有确切数字时只给取数方法，或说明需要按上述方式生成报表。',
+    '【录入前先查重】用户要录入/导入某天销售数据时，先调 check_sales_day 查该日是否已有数据：'
+      + '已有就回答「该日已录入 N 条（金额 X），本次不重复录入」，除非用户明确要求更正；没有才执行导入。',
+    '【回复长度】非开发的问答（查数、问口径、问怎么操作、确认、闲聊）从简：先给结论或数字，1~3 句，要点不超过 5 条；'
+      + '不复述问题、不铺垫背景、不写客套收尾。只有开发/工程类（改代码、查 bug、部署、配置）才展开给步骤与影响面。',
+    '【人员/品牌停用】听到「某员工离职」「某品牌不做了」时，用 set_entity_status 登记最后有效日：'
+      + '历史数据一律保留、绝不删除；停用次月起不再自动生成其固定支出，当月按在职天数折算；停用日之后的销售不计入其业绩。'
+      + '只说月份就按该月月末（如「11 月」= 2026-11-30）。不确定名称先用 list_entity_status 或销售数据核对，不要猜。',
   ];
   const rules = agentRules(setId).data.content.trim();
   if (rules) parts.push(`【用户自定义规则】\n${rules.slice(0, 2000)}`);
@@ -1199,6 +1207,9 @@ export function callTool(name, args = {}, setId = DEFAULT_SET_ID, user = 'workbu
     case 'adjust_recurring': return adjustRecurring(sid, args, user);
     case 'recurring_reminder': return recurring.reminder(sid, args.period || currentPeriodLocal(), { mark: Boolean(args.mark), auto: args.auto !== false });
     case 'list_tags': return { code: 0, message: '', data: tags.listTags(sid, { entity_type: args.entity_type, entity_id: args.entity_id }) };
+    case 'list_entity_status': return life.listStatus(sid, { type: args.type || '' });
+    case 'check_sales_day': return ent.salesDayStatus(sid, args);
+    case 'set_entity_status': return life.setStatus(sid, args, user);
     case 'list_attachments': return fileops.attachmentList(sid, args);
     case 'ocr_file': return fileops.ocrFile(sid, args);
     case 'convert_file': return fileops.convertFile(sid, args);

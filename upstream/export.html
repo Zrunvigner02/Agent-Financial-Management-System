@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>报表导出中心 · 妆点管账</title>
+<title>报表导出中心 · 振颜丽舍</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <style>
   :root { --plum:#742a54; --rose:#d870a0; --pale:#fff5f9; --line:#f0d9e5; --muted:#9b7189; }
@@ -58,7 +58,7 @@
   <div class="logo">&yen;</div>
   <div>
     <h1>报表导出中心</h1>
-    <div class="sub">振颜丽舍 · 妆点管账 ｜ 本地生成，数据只在这台电脑</div>
+    <div class="sub">振颜丽舍 · 振颜丽舍 ｜ 本地生成，数据只在这台电脑</div>
   </div>
   <a class="back" href="/dashboard">返回主界面</a>
 </header>
@@ -123,7 +123,7 @@ function setStatus(el, text, kind) {
 
 async function api(url, opts = {}) {
   const r = await fetch(url, { ...opts, headers: { ...H, ...(opts.headers || {}) } });
-  if (r.status === 401) throw new Error('登录态已过期：请先打开妆点管账主界面，再从托盘菜单进入本页');
+  if (r.status === 401) throw new Error('登录态已过期：请先打开振颜丽舍主界面，再从托盘菜单进入本页');
   return r;
 }
 

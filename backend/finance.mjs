@@ -18,6 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as life from './lifecycle.mjs';
 import { db, get, all, run, now } from './store.mjs';
 import { unzipEntries } from './export.mjs';
 
@@ -185,8 +186,17 @@ export function computePnl(setId, { period, brand = '' } = {}) {
   ensureFinanceTables();
   const periods = periodsOf(String(period || ''));
   if (!periods.length) return fail(`期间不合法：${period}（示例 2026-10 / 2026-Q4 / 2026-10-15）`);
-  const rows = collectRows(setId, periods, brand);
-  if (!rows.length) return fail(`期间 ${period} 没有数据`);
+  const allRows = collectRows(setId, periods, brand);
+  // 品牌停用：停用月之后的期间不再入表；停用月及以前原样保留
+  const brandOk = life.dayFilter(setId, 'brand');
+  const monthEndOf = (p) => `${p}-${String(new Date(Number(p.slice(0, 4)), Number(p.slice(5, 7)), 0).getDate()).padStart(2, '0')}`;
+  const excluded = new Set();
+  const rows = allRows.filter((r) => {
+    if (brandOk(r.brand, monthEndOf(r.period))) return true;
+    excluded.add(r.brand);
+    return false;
+  });
+  if (!allRows.length) return fail(`期间 ${period} 没有数据`);
 
   // brand → channel → item → [{amount,basis}]
   const bucket = new Map();
@@ -267,7 +277,9 @@ export function computePnl(setId, { period, brand = '' } = {}) {
     brands,
     all: { channels: allChannels, total: { items: allItems, ...derive(allItems) } },
     missing,
-  }, `已核算 ${period}：${brands.length} 个品牌，${Object.keys(allChannels).length} 个渠道`);
+    excluded_brands: [...excluded],
+  }, `已核算 ${period}：${brands.length} 个品牌，${Object.keys(allChannels).length} 个渠道`
+    + (excluded.size ? `；已排除停用品牌：${[...excluded].join('、')}（历史数据保留）` : ''));
 }
 
 /* ---------------- 报表输出（文本矩阵） ---------------- */

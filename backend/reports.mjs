@@ -231,7 +231,7 @@ function collectFigures(db, setId, period) {
     SELECT e.subject_code AS code, v.period AS period,
            SUM(e.debit) AS d, SUM(e.credit) AS c
     FROM voucher_entries e JOIN vouchers v ON v.id = e.voucher_id
-    WHERE v.set_id = ? AND v.status != 'void' AND v.period <= ?
+    WHERE v.set_id = ? AND v.status IN ('reviewed','posted') AND v.period <= ?
     GROUP BY e.subject_code, v.period
   `).all(Number(setId) || 85, period);
 

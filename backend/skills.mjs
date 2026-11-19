@@ -1,5 +1,5 @@
 /**
- * 妆点智能体 · 本地技能执行层
+ * 智能体 · 本地技能执行层
  *
  * 背景：前端 AgentWorkspace 点技能时走 POST /api/agent/skills/:id/run 的 **SSE 流**，
  * 与 /api/agent/chat 是两条独立链路。旧后端只实现了 GET /api/agent/skills，

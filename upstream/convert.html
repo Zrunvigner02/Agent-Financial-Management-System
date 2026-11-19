@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>文件格式转换 · 妆点管账</title>
+<title>文件格式转换 · 振颜丽舍</title>
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <style>
   :root { --plum:#1F5E4C; --rose:#46B391; --pale:#F3F1EB; --line:#E2DFD7; --muted:#6E7B76; }
@@ -67,7 +67,7 @@
     <h1>文件格式转换</h1>
     <div class="sub">上传本地文件，或选择导出中心的报表，改成你需要的格式</div>
   </div>
-  <a class="back" href="/" id="zd-back">返回妆点管账</a>
+  <a class="back" href="/" id="zd-back">返回振颜丽舍</a>
 </header>
 
 <div class="wrap">
@@ -115,7 +115,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const api = async (url, opts = {}) => {
   const r = await fetch(url, { ...opts, headers: { ...H, ...(opts.headers || {}) } });
-  if (r.status === 401) throw new Error('登录已过期，请返回妆点管账重新登录后再进入本页');
+  if (r.status === 401) throw new Error('登录已过期，请返回振颜丽舍重新登录后再进入本页');
   return r.json();
 };
 const setStatus = (msg, kind = '') => { $('#status').className = 'status' + (kind ? ' ' + kind : ''); $('#status').innerHTML = msg; };

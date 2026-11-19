@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * claw-sync —— WorkBuddy 本地助理（Claw）会话 → 妆点智能体会话历史
+ * claw-sync —— WorkBuddy 本地助理（Claw）会话 → 智能体会话历史
  *
  * 规则（2026-11-12 由用户确认）：
- * 1. 每一天的本地助理对话，合并成「一条」妆点智能体会话：
+ * 1. 每一天的本地助理对话，合并成「一条」智能体会话：
  *      session_id = claw-YYYYMMDD，title = 「本地助理 · MM-DD」
  * 2. 每条消息都带时间戳：created_at 存本地时间，正文前缀 [HH:MM] 便于界面直接看到
  * 3. 幂等：按「事件 id + 角色」去重，重复跑不会产生重复消息
@@ -230,7 +230,7 @@ function collectEvents() {
 
 function openDb() {
   if (!fs.existsSync(DB_PATH)) {
-    throw new Error(`找不到账套数据库：${DB_PATH}（请先启动一次妆点本地后端）`);
+    throw new Error(`找不到账套数据库：${DB_PATH}（请先启动一次振颜丽舍本地后端）`);
   }
   const db = new DatabaseSync(DB_PATH);
   db.exec('PRAGMA busy_timeout = 8000');

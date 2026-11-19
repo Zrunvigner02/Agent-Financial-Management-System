@@ -104,6 +104,22 @@
   .zd-sb-item{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line-2,#EFECE4);font-size:12.5px}
   .zd-sb-item:last-child{border-bottom:0}
   .zd-sb-canvas{width:100%;display:block}
+  /* 日销售趋势：可拖动 / 缩放 / 自定义区间 */
+  .zd-tt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .zd-tt-head h3{margin:0}
+  .zd-tt-ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .zd-tt-seg{display:flex;border:1px solid var(--line,#E2DFD7);border-radius:9px;overflow:hidden;background:#fff}
+  .zd-tt-seg button{height:26px;padding:0 10px;border:0;background:transparent;font-size:12px;color:#3D4F49;cursor:pointer;font-family:inherit}
+  .zd-tt-seg button:hover{background:#17241f0d}
+  .zd-tt-seg button.on{background:#1F5E4C;color:#fff}
+  .zd-tt-date{height:26px;border:1px solid var(--line,#E2DFD7);border-radius:7px;padding:0 6px;font-size:12px;background:#fff;color:var(--ink,#17241F);font-family:inherit}
+  .zd-tt-canvas{position:relative;cursor:grab;touch-action:pan-y;user-select:none;margin-top:2px}
+  .zd-tt-canvas.dragging{cursor:grabbing}
+  .zd-tt-tip{position:absolute;display:none;pointer-events:none;background:#17241F;color:#fff;font-size:11.5px;
+    border-radius:7px;padding:5px 8px;line-height:1.45;white-space:nowrap;transform:translate(-50%,-125%);z-index:6;
+    box-shadow:0 6px 18px rgba(0,0,0,.18)}
+  .zd-tt-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--faint,#9AA8A0);margin-top:6px}
+  .zd-tt-foot b{color:var(--ink,#17241F);font-weight:600}
   /* 销售端专用侧栏 */
   #zd-sales-menu{display:none;padding:8px;background:transparent;flex-direction:column}
   .zd-sm-item{display:flex;align-items:center;gap:8px;height:34px;line-height:34px;margin-bottom:2px;padding:0 9px;
@@ -147,6 +163,23 @@
       overlay = document.createElement('div');
       overlay.className = 'zd-sb';
       overlay.addEventListener('click', onOverlayClick);
+      // 日销售趋势：拖动平移 / 滚轮缩放 / 双击复位 / 悬停取值（委托到 overlay，重绘后依然有效）
+      overlay.addEventListener('pointerdown', onTrendDown);
+      overlay.addEventListener('pointermove', onTrendMove);
+      overlay.addEventListener('pointerup', onTrendUp);
+      overlay.addEventListener('pointercancel', onTrendUp);
+      overlay.addEventListener('wheel', onTrendWheel, { passive: false });
+      overlay.addEventListener('dblclick', onTrendDbl);
+      overlay.addEventListener('mousemove', onTrendHover);
+      overlay.addEventListener('mouseleave', onTrendLeave);
+      // 月度趋势：同一套手势，独立窗口状态
+      overlay.addEventListener('pointerdown', onMTDown);
+      overlay.addEventListener('pointermove', onMTMove);
+      overlay.addEventListener('pointerup', onMTUp);
+      overlay.addEventListener('pointercancel', onMTUp);
+      overlay.addEventListener('wheel', onMTWheel, { passive: false });
+      overlay.addEventListener('dblclick', onMTDbl);
+      overlay.addEventListener('mousemove', onMTHover);
       main.appendChild(overlay);
     }
     return overlay;
@@ -156,7 +189,7 @@
     const tabs = document.querySelector('.ws-tabs');
     if (!tabs) return;
     const others = [...tabs.querySelectorAll('.ws-tab:not([data-zd-sales])')];
-    // 原两个 Tab 更名：妆点管账 → 财务；妆点智能体 → 智能体
+    // 原两个 Tab 更名：振颜丽舍 → 财务；智能体 → 智能体
     const rename = (el, text) => {
       if (!el) return;
       const sp = el.querySelector('span');
@@ -273,6 +306,7 @@
     el.classList.add('show');
     syncTab();
     load();
+    loadDaily();
   }
 
   function closeBoard() {
@@ -287,7 +321,8 @@
     render();
     try {
       if (!token()) throw new Error('未登录');
-      const q = `from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}&limit=1000`;
+      // 三年维度下 1000 行会被截断（每月多渠 3~5 行），放宽到 5000，保证拖动时历史完整
+      const q = `from=${encodeURIComponent(state.from)}&to=${encodeURIComponent(state.to)}&limit=5000`;
       const j = await api(`/api/enterprise/sales?${q}`);
       if (j.code !== 0) throw new Error(j.message || '加载失败');
       state.items = (j.data && j.data.items) || [];
@@ -317,24 +352,236 @@
     return { M, C, D, t };
   }
 
-  function bars(M) {
+  /* ---------------- 月度趋势：左右拖动 / 滚轮缩放 ---------------- */
+
+  const MB = { W: 640, H: 250, pad: { l: 42, r: 12, t: 14, b: 26 }, minMonths: 3 };
+  const mt = { sig: '', series: [], a: 0, b: 0, mode: '12' };
+
+  // 把「有数据的月份」补成连续月份序列，拖动时不会跳
+  function monthSeries(M) {
     const keys = Object.keys(M).sort();
-    if (!keys.length) return '<div class="zd-sb-empty">当前区间没有销售数据</div>';
-    const W = 640, H = 250, pad = { l: 10, r: 10, t: 12, b: 26 };
-    const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
-    const max = Math.max(...keys.map((k) => Math.max(M[k].amount, M[k].net)), 1) * 1.1;
-    const n = keys.length, gw = iw / n, bw = Math.min(16, gw * 0.3);
+    if (!keys.length) return [];
+    const [y0, m0] = keys[0].split('-').map(Number);
+    const [y1, m1] = keys[keys.length - 1].split('-').map(Number);
+    const out = [];
+    let y = y0; let m = m0; let guard = 0;
+    while ((y < y1 || (y === y1 && m <= m1)) && guard < 600) {
+      const k = `${y}-${String(m).padStart(2, '0')}`;
+      const d = M[k];
+      out.push({
+        key: k,
+        amount: d ? Number(d.amount || 0) : 0,
+        net: d ? Number(d.net || 0) : 0,
+        ret: d ? Number(d.ret || 0) : 0,
+        has: !!d,
+      });
+      m += 1;
+      if (m > 12) { m = 1; y += 1; }
+      guard += 1;
+    }
+    return out;
+  }
+
+  function setMtRange(mode, silent) {
+    const n = mt.series.length;
+    mt.mode = mode;
+    if (!n) { mt.a = 0; mt.b = 0; if (!silent) paintMT(); return; }
+    if (mode === 'all') { mt.a = 0; mt.b = n - 1; }
+    else {
+      const k = Math.max(MB.minMonths, Math.min(n, Number(mode) || 12));
+      mt.b = n - 1;
+      mt.a = Math.max(0, n - k);
+    }
+    if (!silent) paintMT();
+  }
+
+  function mtSpan() { return mt.series.slice(mt.a, mt.b + 1); }
+
+  function mtLabel() {
+    if (!mt.series.length) return '暂无数据';
+    return `${mt.series[mt.a].key} ~ ${mt.series[mt.b].key} · ${mt.b - mt.a + 1} 个月`;
+  }
+
+  function drawMonths() {
+    if (!mt.series.length) return '<div class="zd-sb-empty">当前区间没有销售数据</div>';
+    const { W, H, pad } = MB;
+    const iw = W - pad.l - pad.r;
+    const ih = H - pad.t - pad.b;
+    const n = mt.b - mt.a + 1;
+    const span = mtSpan();
+    const top = Math.max(...span.map((d) => Math.max(d.amount, d.net)), 1) * 1.12;
+    const gw = iw / n;
+    const bw = Math.max(3, Math.min(16, gw * 0.32));
+    const cx = (i) => pad.l + gw * i + gw / 2;
+
     let s = `<svg class="zd-sb-canvas" viewBox="0 0 ${W} ${H}">`;
-    for (let i = 0; i <= 4; i += 1) { const y = pad.t + (ih * i) / 4; s += `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="var(--line-2,#EFECE4)"/>`; }
-    keys.forEach((k, i) => {
-      const cx = pad.l + gw * i + gw / 2;
-      const h1 = (ih * M[k].amount) / max, h2 = (ih * M[k].net) / max;
-      s += `<rect x="${cx - bw - 2}" y="${pad.t + ih - h1}" width="${bw}" height="${Math.max(0, h1)}" rx="3" fill="#46b391"/>`;
-      s += `<rect x="${cx + 2}" y="${pad.t + ih - h2}" width="${bw}" height="${Math.max(0, h2)}" rx="3" fill="#E0A458"/>`;
-      s += `<text x="${cx}" y="${H - 8}" font-size="10" fill="var(--muted,#6E7B76)" text-anchor="middle">${k.slice(5)}月</text>`;
+    for (let i = 0; i <= 4; i += 1) {
+      const y = pad.t + (ih * i) / 4;
+      s += `<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${W - pad.r}" y2="${y.toFixed(1)}" stroke="var(--line-2,#EFECE4)"/>`;
+      s += `<text x="${pad.l - 6}" y="${(y + 3).toFixed(1)}" font-size="9" fill="var(--faint,#9AA8A0)" text-anchor="end">${wan(top * (1 - i / 4))}万</text>`;
+    }
+    span.forEach((d, i) => {
+      const x = cx(i);
+      const h1 = (ih * d.amount) / top;
+      const h2 = (ih * d.net) / top;
+      s += `<rect x="${(x - bw - 2).toFixed(1)}" y="${(pad.t + ih - h1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, h1).toFixed(1)}" rx="2.5" fill="#46b391"/>`;
+      if (d.net > 0) {
+        s += `<rect x="${(x + 2).toFixed(1)}" y="${(pad.t + ih - h2).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, h2).toFixed(1)}" rx="2.5" fill="#E0A458"/>`;
+      }
     });
+    const step = Math.max(1, Math.ceil(n / 8));
+    for (let i = 0; i < n; i += step) {
+      const k = span[i].key;
+      const text = n > 18 ? k.slice(2) : `${Number(k.slice(5))}月`;
+      s += `<text x="${cx(i).toFixed(1)}" y="${H - 8}" font-size="9" fill="var(--muted,#6E7B76)" text-anchor="middle">${text}</text>`;
+    }
+    if ((n - 1) % step) {
+      const k = span[n - 1].key;
+      const text = n > 18 ? k.slice(2) : `${Number(k.slice(5))}月`;
+      s += `<text x="${cx(n - 1).toFixed(1)}" y="${H - 8}" font-size="9" fill="var(--muted,#6E7B76)" text-anchor="end">${text}</text>`;
+    }
     s += '</svg>';
-    return `<div style="font-size:12px;color:var(--muted,#6E7B76);margin-bottom:4px"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#46b391;margin-right:5px"></span>销售额　<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E0A458;margin:0 5px 0 14px"></span>净利润</div>${s}`;
+    return s;
+  }
+
+  function mtPanel(M) {
+    const sig = Object.keys(M).sort().join('|');
+    if (sig !== mt.sig) {
+      mt.sig = sig;
+      mt.series = monthSeries(M);
+      setMtRange(mt.mode, true);
+    }
+    const span = mtSpan();
+    const sum = span.reduce((a, d) => ({ amount: a.amount + d.amount, net: a.net + d.net }), { amount: 0, net: 0 });
+    const legend = '<div style="font-size:12px;color:var(--muted,#6E7B76);margin-bottom:4px">'
+      + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#46b391;margin-right:5px"></span>销售额'
+      + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#E0A458;margin:0 5px 0 14px"></span>净利润</div>';
+    return `<div class="zd-sb-panel" data-role="mtrend">
+      <div class="zd-tt-head">
+        <h3>月度趋势 <span data-mt-label>${esc(mtLabel())}</span></h3>
+        <div class="zd-tt-seg">${[['12', '12月'], ['24', '24月'], ['all', '全部']].map(([k, l]) => `<button type="button" data-mt-range="${k}" class="${mt.mode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      </div>
+      ${legend}
+      <div class="zd-tt-canvas" data-role="mtrend-canvas">
+        <div data-mt-body>${drawMonths()}</div>
+        <div class="zd-tt-tip" data-mt-tip></div>
+      </div>
+      <div class="zd-tt-foot">
+        <span>左右拖动看更早 · 滚轮缩放 · 双击回到最近 12 个月</span>
+        <span data-mt-stats>区间销售额 <b>¥${money(sum.amount)}</b> · 净利润 <b>¥${money(sum.net)}</b></span>
+      </div>
+    </div>`;
+  }
+
+  function paintMT() {
+    if (!overlay) return;
+    const box = overlay.querySelector('[data-role="mtrend"]');
+    if (!box) return;
+    const body = box.querySelector('[data-mt-body]');
+    if (body) body.innerHTML = drawMonths();
+    const lbl = box.querySelector('[data-mt-label]');
+    if (lbl) lbl.textContent = mtLabel();
+    const st = box.querySelector('[data-mt-stats]');
+    if (st) {
+      const span = mtSpan();
+      const sum = span.reduce((a, d) => ({ amount: a.amount + d.amount, net: a.net + d.net }), { amount: 0, net: 0 });
+      st.innerHTML = mt.series.length
+        ? `区间销售额 <b>¥${money(sum.amount)}</b> · 净利润 <b>¥${money(sum.net)}</b>`
+        : '';
+    }
+    box.querySelectorAll('[data-mt-range]').forEach((el) => {
+      el.classList.toggle('on', el.getAttribute('data-mt-range') === mt.mode);
+    });
+  }
+
+  let mtDrag = null;
+  let mtRaf = 0;
+
+  function onMTDown(e) {
+    const cv = e.target.closest && e.target.closest('[data-role="mtrend-canvas"]');
+    if (!cv || !mt.series.length) return;
+    if (e.target.closest('[data-mt-range]')) return;
+    const r = cv.getBoundingClientRect();
+    mtDrag = { x: e.clientX, w: r.width, a: mt.a, b: mt.b };
+    cv.classList.add('dragging');
+    try { cv.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    e.preventDefault();
+  }
+
+  function onMTMove(e) {
+    if (!mtDrag) return;
+    const n = mtDrag.b - mtDrag.a + 1;
+    const perPx = n / Math.max(1, mtDrag.w);
+    const shift = Math.round(-(e.clientX - mtDrag.x) * perPx);
+    let a = mtDrag.a + shift;
+    let b = mtDrag.b + shift;
+    const len = mt.series.length;
+    if (a < 0) { b -= a; a = 0; }
+    if (b > len - 1) { a -= b - (len - 1); b = len - 1; }
+    a = Math.max(0, a);
+    if (a === mt.a && b === mt.b) return;
+    mt.a = a; mt.b = b; mt.mode = 'custom';
+    if (!mtRaf) mtRaf = requestAnimationFrame(() => { mtRaf = 0; paintMT(); });
+  }
+
+  function onMTUp() {
+    if (!mtDrag) return;
+    mtDrag = null;
+    if (!overlay) return;
+    overlay.querySelectorAll('[data-role="mtrend-canvas"].dragging').forEach((el) => el.classList.remove('dragging'));
+  }
+
+  function onMTWheel(e) {
+    const cv = e.target.closest && e.target.closest('[data-role="mtrend-canvas"]');
+    if (!cv || !mt.series.length) return;
+    e.preventDefault();
+    const len = mt.series.length;
+    const n = mt.b - mt.a + 1;
+    const next = Math.min(len, Math.max(MB.minMonths, Math.round(n * (e.deltaY > 0 ? 1.3 : 0.75))));
+    if (next === n) return;
+    const r = cv.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width)));
+    const anchor = mt.a + ratio * (n - 1);
+    let a = Math.round(anchor - ratio * (next - 1));
+    let b = a + next - 1;
+    if (a < 0) { a = 0; b = next - 1; }
+    if (b > len - 1) { b = len - 1; a = Math.max(0, b - next + 1); }
+    mt.a = a; mt.b = b; mt.mode = 'custom';
+    paintMT();
+  }
+
+  function onMTDbl(e) {
+    const cv = e.target.closest && e.target.closest('[data-role="mtrend-canvas"]');
+    if (!cv || !mt.series.length) return;
+    setMtRange('12');
+  }
+
+  function onMTHover(e) {
+    if (!overlay) return;
+    const tip = overlay.querySelector('[data-mt-tip]');
+    if (!tip) return;
+    const cv = e.target.closest && e.target.closest('[data-role="mtrend-canvas"]');
+    if (!cv || mtDrag || !mt.series.length) { tip.style.display = 'none'; return; }
+    const r = cv.getBoundingClientRect();
+    const n = mt.b - mt.a + 1;
+    const { W, pad } = MB;
+    const iw = W - pad.l - pad.r;
+    const sx = ((e.clientX - r.left) / Math.max(1, r.width)) * W;
+    const ratio = Math.min(1, Math.max(0, (sx - pad.l) / iw));
+    const idx = mt.a + Math.min(n - 1, Math.floor(ratio * n));
+    const d = mt.series[idx];
+    if (!d) { tip.style.display = 'none'; return; }
+    tip.innerHTML = `<b>${d.key}</b>　销售 ¥${money(d.amount)}　净利 ¥${money(d.net)}`;
+    tip.style.left = `${Math.min(Math.max(e.clientX - r.left, 60), r.width - 60)}px`;
+    tip.style.top = `${e.clientY - r.top - 6}px`;
+    tip.style.display = 'block';
+  }
+
+  function onMTClick(e) {
+    const seg = e.target.closest && e.target.closest('[data-mt-range]');
+    if (!seg) return false;
+    setMtRange(seg.getAttribute('data-mt-range'));
+    return true;
   }
 
   function donut(C) {
@@ -359,27 +606,330 @@
     return s + `<div style="margin-top:4px">${legend}</div>`;
   }
 
-  function line(D) {
-    const keys = Object.keys(D).sort().slice(-31);
-    if (!keys.length) return '<div class="zd-sb-empty">暂无日数据</div>';
-    const W = 640, H = 170, pad = { l: 10, r: 10, t: 12, b: 22 };
-    const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
-    const max = Math.max(...keys.map((k) => D[k].amount), 1) * 1.15;
-    const step = keys.length > 1 ? iw / (keys.length - 1) : 0;
-    let s = `<svg class="zd-sb-canvas" viewBox="0 0 ${W} ${H}">`;
-    let dpath = '';
-    keys.forEach((k, i) => {
-      const x = pad.l + step * i, y = pad.t + ih - (ih * D[k].amount) / max;
-      dpath += `${i ? 'L' : 'M'}${x},${y} `;
+  /* ---------------- 日销售趋势：可拖动 / 缩放 / 自定义区间 ---------------- */
+
+  const TT = { W: 640, H: 200, pad: { l: 40, r: 12, t: 14, b: 24 }, minDays: 3 };
+  const trend = { items: [], min: '', max: '', series: [], a: 0, b: 0, mode: '31', loading: false, err: '' };
+
+  // 日序列一次性拉全量（库里按天 GROUP BY，一年也就几百行），
+  // 之后拖动/缩放全在前端算，不再打接口 —— 这就是"实时计算"。
+  async function loadDaily() {
+    trend.loading = true; trend.err = '';
+    try {
+      if (!token()) throw new Error('未登录');
+      const j = await api('/api/enterprise/sales/daily');
+      if (!j || j.code !== 0) throw new Error((j && j.message) || '日序列加载失败');
+      const d = j.data || {};
+      trend.items = d.items || [];
+      trend.min = d.min_date || '';
+      trend.max = d.max_date || '';
+      buildSeries();
+      setTrendRange(trend.mode === 'custom' ? '31' : trend.mode, true);
+    } catch (e) {
+      trend.err = e.message || '日序列加载失败';
+      trend.items = []; buildSeries();
+    } finally {
+      trend.loading = false;
+      if (overlay && overlay.classList.contains('show')) paintTrend();
+    }
+  }
+
+  // 补齐空缺日期（没数据的那天画成 0），拖动时曲线才不会跳
+  function buildSeries() {
+    trend.series = [];
+    if (!trend.min || !trend.max) return;
+    const map = new Map(trend.items.map((d) => [String(d.date), d]));
+    const cur = new Date(`${trend.min}T00:00:00`);
+    const end = new Date(`${trend.max}T00:00:00`);
+    let guard = 0;
+    while (cur <= end && guard < 4000) {
+      const k = ymd(cur);
+      const d = map.get(k);
+      trend.series.push({
+        date: k,
+        amount: d ? Number(d.amount || 0) : 0,
+        ret: d ? Number(d.return_amount || 0) : 0,
+        fee: d ? Number(d.fee || 0) : 0,
+        net: d ? Number(d.net_profit || 0) : 0,
+        has: !!d,
+      });
+      cur.setDate(cur.getDate() + 1);
+      guard += 1;
+    }
+  }
+
+  function setTrendRange(mode, silent) {
+    const len = trend.series.length;
+    trend.mode = mode;
+    if (!len) { trend.a = 0; trend.b = 0; if (!silent) paintTrend(); return; }
+    if (mode === 'all') { trend.a = 0; trend.b = len - 1; }
+    else {
+      const n = Math.max(TT.minDays, Math.min(len, Number(mode) || 31));
+      trend.b = len - 1;
+      trend.a = Math.max(0, len - n);
+    }
+    if (!silent) paintTrend();
+  }
+
+  function idxOfDate(str) {
+    if (!str || !trend.series.length) return -1;
+    const t = Date.parse(`${str}T00:00:00`);
+    if (Number.isNaN(t)) return -1;
+    let best = 0; let gap = Infinity;
+    trend.series.forEach((d, i) => {
+      const g = Math.abs(Date.parse(`${d.date}T00:00:00`) - t);
+      if (g < gap) { gap = g; best = i; }
     });
-    s += `<path d="${dpath}" fill="none" stroke="#1F5E4C" stroke-width="2"/>`;
-    keys.forEach((k, i) => {
-      if (i % Math.ceil(keys.length / 6) && i !== keys.length - 1) return;
-      const x = pad.l + step * i;
-      s += `<text x="${x}" y="${H - 6}" font-size="9" fill="var(--muted,#6E7B76)" text-anchor="middle">${k.slice(5)}</text>`;
-    });
+    return best;
+  }
+
+  function applyTrendRange(from, to) {
+    if (!trend.series.length) return;
+    let a = idxOfDate(from);
+    let b = idxOfDate(to);
+    if (a < 0) a = 0;
+    if (b < 0) b = trend.series.length - 1;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (b - a + 1 < TT.minDays) b = Math.min(trend.series.length - 1, a + TT.minDays - 1);
+    trend.a = Math.max(0, a);
+    trend.b = Math.min(trend.series.length - 1, b);
+    trend.mode = 'custom';
+    paintTrend();
+  }
+
+  function trendSpan() { return trend.series.slice(trend.a, trend.b + 1); }
+
+  function trendStat() {
+    const s = trendSpan();
+    const amount = s.reduce((x, d) => x + d.amount, 0);
+    const ret = s.reduce((x, d) => x + d.ret, 0);
+    const days = s.length || 1;
+    return { amount, ret, days, avg: amount / days };
+  }
+
+  function trendLabel() {
+    if (!trend.series.length) return trend.loading ? '加载中…' : '暂无数据';
+    return `${trend.series[trend.a].date} ~ ${trend.series[trend.b].date} · ${trend.b - trend.a + 1} 天`;
+  }
+
+  function drawTrend() {
+    if (!trend.series.length) {
+      return `<div class="zd-sb-empty">${esc(trend.err || (trend.loading ? '加载中…' : '暂无日销售数据'))}</div>`;
+    }
+    const { W, H, pad } = TT;
+    const iw = W - pad.l - pad.r;
+    const ih = H - pad.t - pad.b;
+    const n = trend.b - trend.a + 1;
+    const top = Math.max(...trendSpan().map((d) => d.amount), 1) * 1.15;
+    const X = (i) => (n <= 1 ? pad.l + iw / 2 : pad.l + (iw * i) / (n - 1));
+    const Y = (v) => pad.t + ih - (ih * Math.max(0, v)) / top;
+
+    let path = '';
+    for (let i = 0; i < n; i += 1) {
+      path += `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(trend.series[trend.a + i].amount).toFixed(1)} `;
+    }
+    const area = n > 1
+      ? `${path}L${X(n - 1).toFixed(1)},${(pad.t + ih).toFixed(1)} L${X(0).toFixed(1)},${(pad.t + ih).toFixed(1)} Z`
+      : '';
+
+    let s = `<svg class="zd-sb-canvas zd-tt-svg" viewBox="0 0 ${W} ${H}">`;
+    s += '<defs><linearGradient id="zdTtG" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0%" stop-color="#1F5E4C" stop-opacity=".20"/>'
+      + '<stop offset="100%" stop-color="#1F5E4C" stop-opacity="0"/></linearGradient></defs>';
+    for (let i = 0; i <= 4; i += 1) {
+      const y = pad.t + (ih * i) / 4;
+      const v = top * (1 - i / 4);
+      s += `<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${W - pad.r}" y2="${y.toFixed(1)}" stroke="var(--line-2,#EFECE4)"/>`;
+      s += `<text x="${pad.l - 6}" y="${(y + 3).toFixed(1)}" font-size="9" fill="var(--faint,#9AA8A0)" text-anchor="end">${wan(v)}万</text>`;
+    }
+    if (area) s += `<path d="${area}" fill="url(#zdTtG)"/>`;
+    s += `<path d="${path}" fill="none" stroke="#1F5E4C" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (n <= 45) {
+      for (let i = 0; i < n; i += 1) {
+        const d = trend.series[trend.a + i];
+        if (!d.has) continue;
+        s += `<circle cx="${X(i).toFixed(1)}" cy="${Y(d.amount).toFixed(1)}" r="2" fill="#fff" stroke="#1F5E4C" stroke-width="1.4"/>`;
+      }
+    }
+    if (n === 1) s += `<circle cx="${X(0)}" cy="${Y(trend.series[trend.a].amount)}" r="3" fill="#1F5E4C"/>`;
+
+    const step = Math.max(1, Math.ceil(n / 6));
+    const fmt = (k) => (n > 200 ? k.slice(2, 7) : k.slice(5));
+    for (let i = 0; i < n; i += step) {
+      s += `<text x="${X(i).toFixed(1)}" y="${H - 6}" font-size="9" fill="var(--muted,#6E7B76)" text-anchor="middle">${fmt(trend.series[trend.a + i].date)}</text>`;
+    }
+    if ((n - 1) % step) {
+      s += `<text x="${X(n - 1).toFixed(1)}" y="${H - 6}" font-size="9" fill="var(--muted,#6E7B76)" text-anchor="end">${fmt(trend.series[trend.b].date)}</text>`;
+    }
     s += '</svg>';
     return s;
+  }
+
+  function trendPanel() {
+    const v = trendStat();
+    const head = trend.series.length ? `${esc(trendLabel())}` : (trend.loading ? '加载中…' : '暂无数据');
+    return `<div class="zd-sb-panel" style="margin-bottom:14px" data-role="trend">
+      <div class="zd-tt-head">
+        <h3>日销售趋势 <span data-tt-label>${head}</span></h3>
+        <div class="zd-tt-ctl">
+          <div class="zd-tt-seg">${[['7', '7天'], ['31', '31天'], ['90', '90天'], ['all', '全部']].map(([k, l]) => `<button type="button" data-tt-range="${k}" class="${trend.mode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+          <input type="date" class="zd-tt-date" data-tt-from value="${trend.series.length ? trend.series[trend.a].date : ''}">
+          <span style="color:var(--faint,#9AA8A0);font-size:12px">~</span>
+          <input type="date" class="zd-tt-date" data-tt-to value="${trend.series.length ? trend.series[trend.b].date : ''}">
+          <button type="button" class="zd-sb-btn" style="height:26px;padding:0 9px" data-tt-act="apply">应用</button>
+          <button type="button" class="zd-sb-btn" style="height:26px;padding:0 9px" data-tt-act="toboard">同步到看板</button>
+        </div>
+      </div>
+      <div class="zd-tt-canvas" data-role="trend-canvas">
+        <div data-tt-body>${drawTrend()}</div>
+        <div class="zd-tt-tip" data-tt-tip></div>
+      </div>
+      <div class="zd-tt-foot">
+        <span>左右拖动看更早 · 滚轮缩放 · 双击回到最近 31 天</span>
+        <span data-tt-stats>${trend.series.length ? `区间销售额 <b>¥${money(v.amount)}</b> · 日均 <b>¥${money(v.avg)}</b> · 退款 <b>¥${money(v.ret)}</b>` : ''}</span>
+      </div>
+    </div>`;
+  }
+
+  function paintTrend() {
+    if (!overlay) return;
+    const box = overlay.querySelector('[data-role="trend"]');
+    if (!box) return;
+    const body = box.querySelector('[data-tt-body]');
+    if (body) body.innerHTML = drawTrend();
+    const lbl = box.querySelector('[data-tt-label]');
+    if (lbl) lbl.textContent = trendLabel();
+    const st = box.querySelector('[data-tt-stats]');
+    if (st) {
+      const v = trendStat();
+      st.innerHTML = trend.series.length
+        ? `区间销售额 <b>¥${money(v.amount)}</b> · 日均 <b>¥${money(v.avg)}</b> · 退款 <b>¥${money(v.ret)}</b>`
+        : '';
+    }
+    box.querySelectorAll('[data-tt-range]').forEach((el) => {
+      el.classList.toggle('on', el.getAttribute('data-tt-range') === trend.mode);
+    });
+    if (trend.series.length) {
+      const fi = box.querySelector('[data-tt-from]');
+      const ti = box.querySelector('[data-tt-to]');
+      if (fi && document.activeElement !== fi) fi.value = trend.series[trend.a].date;
+      if (ti && document.activeElement !== ti) ti.value = trend.series[trend.b].date;
+    }
+  }
+
+  /* 拖动 / 缩放 / 悬停 */
+
+  let ttDrag = null;
+  let ttRaf = 0;
+
+  function onTrendDown(e) {
+    const cv = e.target.closest && e.target.closest('[data-role="trend-canvas"]');
+    if (!cv || !trend.series.length) return;
+    if (e.target.closest('[data-tt-act]') || e.target.closest('input')) return;
+    const r = cv.getBoundingClientRect();
+    ttDrag = { x: e.clientX, w: r.width, a: trend.a, b: trend.b };
+    cv.classList.add('dragging');
+    try { cv.setPointerCapture(e.pointerId); } catch { /* 旧内核忽略 */ }
+    e.preventDefault();
+  }
+
+  function onTrendMove(e) {
+    if (!ttDrag) return;
+    const n = ttDrag.b - ttDrag.a + 1;
+    const perPx = n / Math.max(1, ttDrag.w);
+    const shift = Math.round(-(e.clientX - ttDrag.x) * perPx);
+    let a = ttDrag.a + shift;
+    let b = ttDrag.b + shift;
+    const len = trend.series.length;
+    if (a < 0) { b -= a; a = 0; }
+    if (b > len - 1) { a -= b - (len - 1); b = len - 1; }
+    a = Math.max(0, a);
+    if (a === trend.a && b === trend.b) return;
+    trend.a = a; trend.b = b; trend.mode = 'custom';
+    if (!ttRaf) {
+      ttRaf = requestAnimationFrame(() => { ttRaf = 0; paintTrend(); });
+    }
+  }
+
+  function onTrendUp() {
+    if (!ttDrag) return;
+    ttDrag = null;
+    if (!overlay) return;
+    overlay.querySelectorAll('.zd-tt-canvas.dragging').forEach((el) => el.classList.remove('dragging'));
+  }
+
+  function onTrendWheel(e) {
+    const cv = e.target.closest && e.target.closest('[data-role="trend-canvas"]');
+    if (!cv || !trend.series.length) return;
+    e.preventDefault();
+    const len = trend.series.length;
+    const n = trend.b - trend.a + 1;
+    const next = Math.min(len, Math.max(TT.minDays, Math.round(n * (e.deltaY > 0 ? 1.25 : 0.8))));
+    if (next === n) return;
+    const r = cv.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width)));
+    const anchor = trend.a + ratio * (n - 1);
+    let a = Math.round(anchor - ratio * (next - 1));
+    let b = a + next - 1;
+    if (a < 0) { a = 0; b = next - 1; }
+    if (b > len - 1) { b = len - 1; a = Math.max(0, b - next + 1); }
+    trend.a = a; trend.b = b; trend.mode = 'custom';
+    paintTrend();
+  }
+
+  function onTrendDbl(e) {
+    const cv = e.target.closest && e.target.closest('[data-role="trend-canvas"]');
+    if (!cv || !trend.series.length) return;
+    setTrendRange('31');
+  }
+
+  function onTrendHover(e) {
+    if (!overlay) return;
+    const tip = overlay.querySelector('[data-tt-tip]');
+    if (!tip) return;
+    const cv = e.target.closest && e.target.closest('[data-role="trend-canvas"]');
+    if (!cv || ttDrag || !trend.series.length) { tip.style.display = 'none'; return; }
+    const r = cv.getBoundingClientRect();
+    const n = trend.b - trend.a + 1;
+    const { W, pad } = TT;
+    const iw = W - pad.l - pad.r;
+    const sx = ((e.clientX - r.left) / Math.max(1, r.width)) * W;
+    const ratio = Math.min(1, Math.max(0, (sx - pad.l) / iw));
+    const idx = trend.a + Math.round(ratio * (n - 1));
+    const d = trend.series[idx];
+    if (!d) { tip.style.display = 'none'; return; }
+    tip.innerHTML = `<b>${d.date}</b>　¥${money(d.amount)}${d.ret ? `　退款 ¥${money(d.ret)}` : ''}`;
+    tip.style.left = `${Math.min(Math.max(e.clientX - r.left, 40), r.width - 40)}px`;
+    tip.style.top = `${e.clientY - r.top - 6}px`;
+    tip.style.display = 'block';
+  }
+
+  function onTrendLeave() {
+    if (!overlay) return;
+    const tip = overlay.querySelector('[data-tt-tip]');
+    if (tip) tip.style.display = 'none';
+  }
+
+  function onTrendClick(e) {
+    const seg = e.target.closest && e.target.closest('[data-tt-range]');
+    if (seg) { setTrendRange(seg.getAttribute('data-tt-range')); return; }
+    const act = e.target.closest && e.target.closest('[data-tt-act]');
+    if (!act) return;
+    const box = act.closest('[data-role="trend"]');
+    if (!box) return;
+    const what = act.getAttribute('data-tt-act');
+    if (what === 'apply') {
+      const fi = box.querySelector('[data-tt-from]');
+      const ti = box.querySelector('[data-tt-to]');
+      applyTrendRange(fi && fi.value, ti && ti.value);
+    } else if (what === 'toboard') {
+      if (!trend.series.length) return;
+      state.from = trend.series[trend.a].date;
+      state.to = trend.series[trend.b].date;
+      state.dim = 'custom';
+      render();
+      load();
+    }
   }
 
   function kpis(t) {
@@ -456,13 +1006,15 @@
   function renderBoard() {
     const { M, C, D, t } = aggregate(state.items);
     if (state.err) return `<div class="zd-sb-note">${esc(state.err)}</div>`;
-    if (!state.items.length) return '<div class="zd-sb-empty">当前区间没有销售数据。<br>点「上传数据」导入 CSV/Excel，或先用智能体同步销售数据。</div>';
+    if (!state.items.length) {
+      return `<div class="zd-sb-empty">当前区间没有销售数据。<br>点「上传数据」导入 CSV/Excel，或先用智能体同步销售数据；也可以直接在下面的趋势里翻看历史。</div>${trendPanel()}`;
+    }
     return `${kpis(t)}
       <div class="zd-sb-grid">
-        <div class="zd-sb-panel"><h3>月度趋势 <span>销售额 / 净利润</span></h3>${bars(M)}</div>
+        ${mtPanel(M)}
         <div class="zd-sb-panel"><h3>渠道结构 <span>销售额占比</span></h3>${donut(C)}</div>
       </div>
-      <div class="zd-sb-panel" style="margin-bottom:14px"><h3>日销售趋势 <span>最近 31 天</span></h3>${line(D)}</div>
+      ${trendPanel()}
       <div class="zd-sb-grid">
         <div class="zd-sb-panel"><h3>月度明细</h3>${tableM(M)}</div>
         <div class="zd-sb-panel"><h3>渠道明细</h3>${tableC(C)}</div>
@@ -493,6 +1045,8 @@
   }
 
   function onOverlayClick(e) {
+    if (e.target.closest('[data-tt-range],[data-tt-act]')) { onTrendClick(e); return; }
+    if (e.target.closest('[data-mt-range]')) { onMTClick(e); return; }
     const dimEl = e.target.closest('[data-dim]');
     if (dimEl) {
       state.dim = dimEl.getAttribute('data-dim');
@@ -511,6 +1065,7 @@
       if (tt) state.to = tt.value || state.to;
       if (act === 'query') state.dim = 'custom';
       load();
+      loadDaily();
     } else if (act === 'roadmap') {
       state.view = state.view === 'roadmap' ? 'board' : 'roadmap';
       render();

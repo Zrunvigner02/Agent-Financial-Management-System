@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""妆点管账 · 1.0 发布打包器（仅用 Python 标准库）
+"""振颜丽舍 · 1.0 发布打包器（仅用 Python 标准库）
 
 用法：
   python tools/make-release.py                 # 生成推送用源码包 + 清单

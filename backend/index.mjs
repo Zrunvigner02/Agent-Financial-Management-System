@@ -23,6 +23,7 @@ import * as sessionTitle from './session-title.mjs';
 import * as rpt from './reports.mjs';
 import * as rec from './recurring.mjs';
 import * as tags from './tags.mjs';
+import * as life from './lifecycle.mjs';
 
 const PORT = Number(process.env.LOCAL_BACKEND_PORT || 8000);
 const HOST = process.env.LOCAL_BACKEND_HOST || '127.0.0.1';
@@ -34,7 +35,7 @@ const TOOL_NAMES = [
   'create_subject', 'create_auxiliary', 'upload_invoice', 'create_invoice',
   'list_invoice_templates', 'create_invoice_voucher',
   'list_recurring', 'save_recurring', 'generate_recurring', 'adjust_recurring', 'recurring_reminder',
-  'list_tags', 'save_tag',
+  'list_tags', 'save_tag', 'list_entity_status', 'set_entity_status', 'check_sales_day',
   'list_attachments', 'ocr_file', 'convert_file', 'file_formats',
   'list_channels', 'save_channel', 'list_products', 'save_product',
   'list_sales', 'import_sales', 'sales_compare', 'list_ops', 'list_distribution',
@@ -59,6 +60,9 @@ const TOOL_DESCRIPTIONS = {
   recurring_reminder: '本月固定支出提醒',
   list_tags: '查标注',
   save_tag: '加标注',
+  list_entity_status: '查员工/品牌停用状态',
+  set_entity_status: '登记离职或品牌停做（历史不删、未来不计）',
+  check_sales_day: '查某天/某区间是否已录入销售数据',
   list_attachments: '查附件',
   ocr_file: '图片识别文字',
   convert_file: '转换文件格式',
@@ -89,6 +93,31 @@ const TOOL_DESCRIPTIONS = {
 };
 
 const TOOL_SCHEMAS = {
+  check_sales_day: {
+    type: 'object',
+    properties: {
+      date: { type: 'string', description: '要查的日期 YYYY-MM-DD；给 from/to 可查区间' },
+      from: { type: 'string' }, to: { type: 'string' },
+    },
+  },
+  list_entity_status: {
+    type: 'object',
+    properties: {
+      type: { type: 'string', description: 'staff=员工 / brand=品牌 / channel=渠道 / store=店铺；留空=全部' },
+    },
+  },
+  set_entity_status: {
+    type: 'object',
+    properties: {
+      type: { type: 'string', description: 'staff=员工 / brand=品牌 / channel=渠道 / store=店铺' },
+      name: { type: 'string', description: '员工姓名或品牌名，必须与销售/支出数据里的写法一致' },
+      action: { type: 'string', description: 'stop=停用（离职/不做了） resume=恢复' },
+      effective_to: { type: 'string', description: '最后有效日，YYYY-MM-DD；只给 YYYY-MM 表示该月月末。例：11月16日离职 → 2026-11-16' },
+      reason: { type: 'string', description: '原因，如「离职」「品牌停做」' },
+      prorate: { type: 'boolean', description: '停用当月固定支出是否按天折算，默认 true；社保一类可设 false 整月照缴' },
+    },
+    required: ['type', 'name'],
+  },
   list_products: {
     type: 'object',
     properties: { group_name: { type: 'string' }, active: { type: 'string' }, limit: { type: 'number' } },
@@ -427,7 +456,7 @@ async function handleMcp(res, body, authHeader) {
     return sendJson(res, 200, mcpResult(id, {
       protocolVersion: params.protocolVersion || '2024-11-05',
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'zhuangdian-guanzhang-local', version: '2.0.0' },
+      serverInfo: { name: 'zhuangdian-guanzhang-local', version: '2.0.3' },
     }), { 'mcp-session-id': randomUUID() });
   }
   if (method === 'ping') return sendJson(res, 200, mcpResult(id, {}));
@@ -435,7 +464,7 @@ async function handleMcp(res, body, authHeader) {
     return sendJson(res, 200, mcpResult(id, {
       tools: TOOL_NAMES.map((name) => ({
         name,
-        description: TOOL_DESCRIPTIONS[name] || `妆点管账本地工具 ${name}`,
+        description: TOOL_DESCRIPTIONS[name] || `振颜丽舍本地工具 ${name}`,
         inputSchema: TOOL_SCHEMAS[name] || { type: 'object', properties: {}, additionalProperties: true },
       })),
     }));
@@ -535,6 +564,8 @@ async function runSkillSse(res, skillId, body, setId) {
 /* ---------------- 对话里的工具调用（function calling） ---------------- */
 
 const READ_ONLY_TOOLS = new Set([
+  'check_sales_day',
+  'list_entity_status',
   'list_sets', 'list_vouchers', 'get_voucher', 'get_ledger', 'get_report',
   'list_assets', 'list_asset_categories', 'list_subjects', 'list_auxiliaries',
   'list_invoices', 'get_closing_status', 'list_invoice_templates',
@@ -575,6 +606,9 @@ function summarizeAction(tool, args) {
   if (Array.isArray(a.entries)) parts.push(`分录 ${a.entries.length} 行`);
   if (a.id) parts.push(`编号 ${a.id}`);
   if (a.tag) parts.push(`标注「${a.tag}」`);
+  if (a.type && a.name) parts.push(`${a.type}「${a.name}」`);
+  if (a.effective_to) parts.push(`最后有效日 ${a.effective_to}`);
+  if (a.action === 'resume') parts.push('恢复启用');
   if (a.summary) parts.push(`摘要「${String(a.summary).slice(0, 30)}」`);
   return `${tool}${parts.length ? '：' + parts.join('，') : ''}`;
 }
@@ -1008,6 +1042,8 @@ async function handle(req, res) {
   if (p === '/api/enterprise/products' && method === 'GET') return reply(res, ent.listProducts(setId, q));
   if (p === '/api/enterprise/products' && method === 'POST') return reply(res, ent.saveProduct(setId, body));
   if (p === '/api/enterprise/sales/compare' && method === 'GET') return reply(res, ent.salesCompare(setId, q));
+  if (p === '/api/enterprise/sales/daily' && method === 'GET') return reply(res, ent.salesDaily(setId, q));
+  if (p === '/api/enterprise/sales/day-status' && method === 'GET') return reply(res, ent.salesDayStatus(setId, q));
   if (p === '/api/enterprise/sales' && method === 'GET') return reply(res, ent.listSales(setId, q));
   if (p === '/api/enterprise/sales/import' && method === 'POST') return reply(res, ent.importSales(setId, body));
   if (p === '/api/enterprise/sales/parse' && method === 'POST') return reply(res, await ent.parseSalesUpload(body));
@@ -1078,14 +1114,28 @@ async function handle(req, res) {
     return reply(res, { code: 0, message: '', data: tags.listTags(setId, { entity_type: q.entity_type || q.type, entity_id: q.entity_id }) });
   }
   if (p === '/api/tags' && method === 'POST') return reply(res, tags.addTag(setId, body, actor));
+
+  // ---------------- 实体生命周期（离职 / 品牌停做，历史不删、未来不计） ----------------
+  if (p === '/api/lifecycle' && method === 'GET') {
+    return reply(res, life.listStatus(setId, { type: q.type || '', includeActive: q.active !== '0' }));
+  }
+  if (p === '/api/lifecycle' && method === 'POST') return reply(res, life.setStatus(setId, body, actor));
   m = p.match(/^\/api\/tags\/(\d+)$/);
   if (m && method === 'DELETE') return reply(res, tags.voidTag(setId, Number(m[1])));
   m = p.match(/^\/api\/recurring\/(\d+)\/resign$/);
   if (m && method === 'POST') {
-    return reply(res, tags.addTag(setId, {
+    const tpl = rec.listTemplates(setId).find((t) => t.id === Number(m[1]));
+    const period = body.period || currentPeriod();
+    const out = tags.addTag(setId, {
       entity_type: 'recurring', entity_id: Number(m[1]), tag: '离职',
-      effective_from: body.period || currentPeriod(), note: body.note || '',
-    }, actor));
+      effective_from: period, note: body.note || '',
+    }, actor);
+    // 同时写人员生命周期：最后有效日 = 该月最后一天（旧口径「该月起不再生成」）
+    if (out.code === 0 && tpl?.person) {
+      const to = `${period}-${String(new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0).getDate()).padStart(2, '0')}`;
+      life.setStatus(setId, { type: 'staff', name: tpl.person, action: 'stop', effective_to: to, reason: body.note || '模板登记离职' }, actor);
+    }
+    return reply(res, out);
   }
   if (p === '/api/recurring' && method === 'GET') return reply(res, rec.plan(setId, q.period || currentPeriod()));
   if (p === '/api/recurring/templates' && method === 'GET') return reply(res, { code: 0, message: '', data: rec.listTemplates(setId) });

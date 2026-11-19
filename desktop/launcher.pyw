@@ -1,4 +1,4 @@
-"""妆点管账 · 无终端桌面启动器（桌面快捷方式的实际入口）。
+"""振颜丽舍 · 无终端桌面启动器（桌面快捷方式的实际入口）。
 
 1) 清理宿主注入的 ELECTRON_RUN_AS_NODE（否则 Electron 会被当成纯 Node 运行）
 2) 优先启动 Electron 原生窗口
@@ -85,7 +85,7 @@ def ensure_services():
         log('spawn claw-sync --watch')
     except Exception as e:
         log('claw-sync spawn failed: %s' % e)
-    # 企微 AIBot 会话 → 妆点智能体会话历史（同样有单例锁）
+    # 企微 AIBot 会话 → 智能体会话历史（同样有单例锁）
     try:
         spawn_hidden([NODE, os.path.join(ROOT, 'tools', 'aibot-sync.mjs'), '--watch'])
         log('spawn aibot-sync --watch')

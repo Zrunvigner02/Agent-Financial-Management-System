@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * change-gate —— 妆点项目的「修改安全锁」
+ * change-gate —— 振颜丽舍项目的「修改安全锁」
  *
  * 规则（用户 2026-11-12 明确要求）：
  *   任何涉及本项目（C:\Users\Administrator\WorkBuddy\工作区3\jinli-finance）的改动，

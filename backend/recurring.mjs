@@ -9,8 +9,18 @@
  */
 import { db, get, all, run, now } from './store.mjs';
 import * as tags from './tags.mjs';
+import * as life from './lifecycle.mjs';
 
 const PERIOD_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** 模板表补一列「停用当月是否按天折算」，默认折算 */
+let prorateColReady = false;
+function ensureProrateColumn() {
+  if (prorateColReady) return;
+  const cols = all('PRAGMA table_info(recurring_templates)').map((c) => c.name);
+  if (!cols.includes('prorate')) run('ALTER TABLE recurring_templates ADD COLUMN prorate INTEGER NOT NULL DEFAULT 1');
+  prorateColReady = true;
+}
 const ok = (data, message = '') => ({ code: 0, message, data });
 const fail = (message) => ({ code: 1, message, data: null });
 
@@ -70,17 +80,27 @@ const amountOf = (entries) => money(entries.reduce((s, e) => s + Number(e.debit 
 /* ---------------- 模板 ---------------- */
 
 export function listTemplates(setId, { activeOnly = false } = {}) {
+  ensureProrateColumn();
   const rows = activeOnly
     ? all('SELECT * FROM recurring_templates WHERE set_id = ? AND active = 1 ORDER BY id', setId)
     : all('SELECT * FROM recurring_templates WHERE set_id = ? ORDER BY active DESC, id', setId);
   const tagMap = tags.tagMap(setId, 'recurring');
-  return rows.map((r) => ({
+  const staffStops = life.stoppedMap(setId, 'staff');
+  return rows.map((r) => {
+    // 两种来源合一：模板上的旧「离职」标注（按月）+ 人员生命周期（按天）
+    const legacyMonth = (tagMap.get(r.id) || {})['离职'] || '';
+    const legacyTo = life.legacyMonthToDate(legacyMonth);
+    const lifeTo = r.person ? (staffStops.get(r.person) || '') : '';
+    const stoppedAt = [legacyTo, lifeTo].filter(Boolean).sort()[0] || '';
+    return {
     id: r.id,
     name: r.name,
     person: r.person || '',
     category: r.category || '',
     tags: tagMap.get(r.id) || {},
-    resigned_from: (tagMap.get(r.id) || {})['离职'] || '',
+    resigned_from: legacyMonth,
+    stopped_at: stoppedAt,
+    prorate: Number(r.prorate ?? 1) !== 0,
     entries: parseEntries(r.entries),
     amount: amountOf(parseEntries(r.entries)),
     day: Number(r.day || 1),
@@ -89,7 +109,8 @@ export function listTemplates(setId, { activeOnly = false } = {}) {
     active: Number(r.active) === 1,
     note: r.note || '',
     updated_at: r.updated_at,
-  }));
+    };
+  });
 }
 
 export function saveTemplate(setId, data = {}, user = '') {
@@ -108,6 +129,8 @@ export function saveTemplate(setId, data = {}, user = '') {
   const norm = normalizeEntries(setId, entries);
   if (!norm.ok) return fail(norm.message);
 
+  ensureProrateColumn();
+  const prorate = data.prorate === false || data.prorate === 0 ? 0 : 1;
   const day = Math.min(31, Math.max(1, Number(data.day || 1)));
   const start = data.start_period && PERIOD_RE.test(data.start_period) ? data.start_period : '';
   const end = data.end_period && PERIOD_RE.test(data.end_period) ? data.end_period : '';
@@ -116,19 +139,19 @@ export function saveTemplate(setId, data = {}, user = '') {
   if (data.id) {
     const row = get('SELECT * FROM recurring_templates WHERE id = ? AND set_id = ?', Number(data.id), setId);
     if (!row) return fail('固定支出不存在');
-    run(`UPDATE recurring_templates SET name=?, category=?, person=?, entries=?, day=?, start_period=?, end_period=?, note=?, updated_at=?
+    run(`UPDATE recurring_templates SET name=?, category=?, person=?, entries=?, day=?, start_period=?, end_period=?, note=?, prorate=?, updated_at=?
          WHERE id=? AND set_id=?`,
       name, String(data.category || row.category || ''), String(data.person ?? row.person ?? ''),
       JSON.stringify(norm.entries), day,
-      start || row.start_period || '', end, String(data.note || row.note || ''), now(), Number(data.id), setId);
+      start || row.start_period || '', end, String(data.note || row.note || ''), prorate, now(), Number(data.id), setId);
     return ok({ id: Number(data.id), amount: norm.amount }, `已更新「${name}」`);
   }
 
   const info = run(`INSERT INTO recurring_templates
-    (set_id, name, category, person, entries, day, start_period, end_period, active, note, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+    (set_id, name, category, person, entries, day, start_period, end_period, active, note, prorate, created_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
     setId, name, String(data.category || ''), String(data.person || ''), JSON.stringify(norm.entries), day,
-    start, end, String(data.note || ''), String(user || ''), now(), now());
+    start, end, String(data.note || ''), prorate, String(user || ''), now(), now());
   return ok({ id: Number(info.lastInsertRowid), amount: norm.amount }, `已建立固定支出「${name}」，每月 ${amountOf(norm.entries)} 元`);
 }
 
@@ -205,10 +228,33 @@ function deleteDraft(setId, voucherId) {
   return true;
 }
 
+/** 按比例缩放分录金额，并保证借贷仍然平衡（差额补到金额最大的那一侧） */
+function scaleEntries(entries, ratio, note) {
+  const scaled = entries.map((e) => ({
+    ...e,
+    debit: money(Number(e.debit || 0) * ratio),
+    credit: money(Number(e.credit || 0) * ratio),
+    summary: e.summary ? `${e.summary}（${note}）`.slice(0, 80) : note,
+  }));
+  const d = money(scaled.reduce((s, e) => s + Number(e.debit || 0), 0));
+  const c = money(scaled.reduce((s, e) => s + Number(e.credit || 0), 0));
+  const diff = money(d - c);
+  if (Math.abs(diff) > 0.004) {
+    const idx = diff > 0
+      ? scaled.findIndex((e) => Number(e.credit || 0) > 0)
+      : scaled.findIndex((e) => Number(e.debit || 0) > 0);
+    if (idx >= 0) {
+      if (diff > 0) scaled[idx].credit = money(Number(scaled[idx].credit || 0) + diff);
+      else scaled[idx].debit = money(Number(scaled[idx].debit || 0) - diff);
+    }
+  }
+  return scaled;
+}
+
 function inRange(tpl, period) {
   if (!tpl.active) return false;
-  // 离职：自离职月份起不再生成（历史月份仍可在凭证里查到）
-  if (tpl.resigned_from && period >= tpl.resigned_from) return false;
+  // 停用：最后有效日早于本月月初 → 整月不再生成；落在月内则由生成环节按天折算
+  if (tpl.stopped_at && tpl.stopped_at < `${period}-01`) return false;
   if (tpl.start_period && period < tpl.start_period) return false;
   if (tpl.end_period && period > tpl.end_period) return false;
   return true;
@@ -223,7 +269,19 @@ export function generateForPeriod(setId, period, user = 'auto') {
     if (!inRange(tpl, period)) continue;
     const ran = get('SELECT * FROM recurring_runs WHERE template_id = ? AND period = ?', tpl.id, period);
     if (ran) { skipped.push({ id: tpl.id, name: tpl.name, reason: '本月已生成' }); continue; }
-    const entries = overrideOf(tpl.id, period) || tpl.entries;
+    const base = overrideOf(tpl.id, period) || tpl.entries;
+    // 停用当月：按在职天数折算（模板可关掉折算，社保一类通常整月照缴）
+    let entries = base;
+    let prorated = null;
+    if (tpl.stopped_at) {
+      const pr = life.prorateMonth(1, period, tpl.stopped_at, { prorate: tpl.prorate !== false });
+      if (pr.ratio <= 0) { skipped.push({ id: tpl.id, name: tpl.name, reason: `已于 ${tpl.stopped_at} 停用` }); continue; }
+      if (pr.prorated) {
+        const note = `${tpl.person || tpl.name} ${tpl.stopped_at} 停用，按 ${pr.days}/${pr.monthDays} 天折算`;
+        entries = scaleEntries(base, pr.ratio, note);
+        prorated = { days: pr.days, monthDays: pr.monthDays, ratio: pr.ratio, note };
+      }
+    }
     const norm = normalizeEntries(setId, entries);
     if (!norm.ok) { skipped.push({ id: tpl.id, name: tpl.name, reason: norm.message }); continue; }
     const day = Math.min(tpl.day, monthDays(period));
@@ -231,7 +289,7 @@ export function generateForPeriod(setId, period, user = 'auto') {
     const vid = createDraftVoucher(setId, period, date, norm.entries, user, tpl.name);
     run(`INSERT INTO recurring_runs (template_id, set_id, period, voucher_id, amount, source, created_at)
          VALUES (?, ?, ?, ?, ?, 'auto', ?)`, tpl.id, setId, period, vid, norm.amount, now());
-    created.push({ id: tpl.id, name: tpl.name, voucher_id: vid, amount: norm.amount });
+    created.push({ id: tpl.id, name: tpl.name, voucher_id: vid, amount: norm.amount, prorated });
   }
   return ok({ period, created, skipped }, created.length ? `已生成 ${created.length} 张固定支出凭证（草稿）` : '本月无需生成');
 }
@@ -278,10 +336,14 @@ export function plan(setId, period) {
     const entries = ov || t.entries;
     const ran = get('SELECT * FROM recurring_runs WHERE template_id = ? AND period = ?', t.id, period);
     const voucher = ran?.voucher_id ? get('SELECT id, status, no FROM vouchers WHERE id = ?', ran.voucher_id) : null;
+    const pr = t.stopped_at ? life.prorateMonth(amountOf(entries), period, t.stopped_at, { prorate: t.prorate !== false }) : null;
     return {
       id: t.id, name: t.name, person: t.person, category: t.category,
       tags: t.tags, resigned_from: t.resigned_from,
-      amount: amountOf(entries), base_amount: t.amount,
+      stopped_at: t.stopped_at || '',
+      prorated: Boolean(pr && pr.prorated),
+      prorate_days: pr && pr.prorated ? pr.days : null,
+      amount: pr ? pr.amount : amountOf(entries), base_amount: t.amount,
       overridden: Boolean(ov),
       generated: Boolean(ran),
       voucher_id: voucher?.id || null,

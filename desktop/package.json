@@ -2,7 +2,7 @@
   "name": "jinli-finance-desktop",
   "version": "2.0.0",
   "private": true,
-  "description": "妆点管账 · 本地离线版桌面壳",
+  "description": "振颜丽舍 · 本地离线版桌面壳",
   "main": "main.js",
   "scripts": {
     "start": "electron ."

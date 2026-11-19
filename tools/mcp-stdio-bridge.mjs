@@ -1,5 +1,5 @@
 /**
- * 妆点管账 · MCP stdio 桥（零依赖兜底方案）
+ * 振颜丽舍 · MCP stdio 桥（零依赖兜底方案）
  *
  * 有些 MCP 客户端对纯 HTTP POST 的 streamableHttp 支持不全；本桥把 stdio 上的
  * 换行分隔 JSON-RPC 逐条转发到本地后端 POST /mcp，再把响应写回 stdout。
@@ -40,7 +40,7 @@ function forward(msg) {
     .catch((e) => {
       reply({
         jsonrpc: '2.0', id: msg.id ?? null,
-        error: { code: -32000, message: `连接妆点管账本地服务失败：${e.message}（请确认桌面端已启动、令牌有效）` },
+        error: { code: -32000, message: `连接振颜丽舍本地服务失败：${e.message}（请确认桌面端已启动、令牌有效）` },
       });
       done();
     });

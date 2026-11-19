@@ -1,6 +1,6 @@
 # 本项目的 AI 协作约定
 
-> 详细规则见 `rules/intent-routing.md`、`rules/wecom-reply-rules.md`、`rules/report-rules.md`。
+> 详细规则见 `rules/intent-routing.md`、`rules/wecom-reply-rules.md`、`rules/report-rules.md`、`rules/entity-lifecycle.md`、`rules/agent-reply-style.md`。
 > 变更前先读 `README.md`，改完跑 `npm run check`。
 
 ## 一、先分流，再动手（最高优先）
@@ -38,3 +38,39 @@
 - 生成命令：`node tools/make-channel-daily.mjs --channel 天猫 --from 2026-11-01 --to 2026-11-19`
 - 空数据测试：加 `--empty`；指定输出：加 `--out "路径.xlsx"`
 - 数据取自 `sales_daily`（按渠道 + 日期）；未接入的栏目留空，禁止填 0 或编造
+
+## 六、人员离职 / 品牌停做（历史不删、未来不计）
+
+- 铁律：**历史一个字都不删，未来一天都不多算**。听到「张三离职了」「世家不做了」，只登记截止日，不动数据。
+- 字段语义：`effective_to` = **最后有效日（含当天）**；11 月 16 日离职 → 11-17 起不算；只说「11 月」→ 按 11-30。
+- 落点：固定支出次月起不生成、停用当月按在职天数折算（分录摘要写明）；停用日后的销售不计入其业绩；品牌停用后该期间不再入损益表。
+- 操作：智能体工具 `set_entity_status` / `list_entity_status`，命令行 `node tools/entity-status.mjs`，接口 `POST /api/lifecycle`。
+- 细节与边界见 `rules/entity-lifecycle.md`；自检 `npm run test:lifecycle`（26 项）。
+
+## 七、回复长短（非开发问答从简）
+
+- **开发/工程类**（改代码、查 bug、部署、配置、口径变更）：该详细就详细，给步骤、命令、影响面、验证方式。
+- **非开发问答**（查数、问口径、问怎么操作、确认、闲聊）：先给结论或数字，1~3 句；要点不超过 5 条；不复述问题、不铺垫、不写客套收尾；报数字带期间和口径；缺数据直接说缺哪份。
+- 内容确实多时先给摘要，末尾问「要展开吗」；只有用户说「详细说 / 完整方案」才展开。
+- 落点：`backend/biz.mjs#agentSystemPrompt` + 账套 `agent_rules`；口径见 `rules/agent-reply-style.md`。
+
+## 八、旺店通导出（本地取数）
+
+- 用户从旺店通 ERP 导出「销售订单」CSV/XLSX 到 `D://振颜丽舍//wdt//每日导出`，`tools/wdt-watch.mjs` 自动解析入库并移入 `已入库`。
+- 口径：销售额=付款订单金额；成本=货品成本+包装成本；平台费=佣金成本；净利=销售额−成本−平台费−预估邮资成本；件数该报表没有，留 0。
+- 幂等键 `(set_id, source='wdt', date, group_name, brand)`；同一文件重复导入只更新。
+- 定时：每天 23:00 与 01:00 各跑一次 RPA 导出，每次取最近 7 天（覆盖迟到单）；01:00 那批兼做校验补漏；失败 10 分钟后重试。
+- 出表：导出入库后自动生成各品牌×渠道日报到 `D://振颜丽舍//报表//日报//<日期>//`。
+- 品牌：德国世家/PF79（跨境进口，海外旗舰店）、歌剧魅影（国内生产，官方旗舰店）。
+
+## 九、RPA 坐标双证
+
+- 每个点位同时存相对客户区（`[coords]`）与屏幕绝对（`[abs]`），运行时两路互算、互相印证。
+- 窗口位移 → 用相对；相对越界 / DPI 变化 → 视为布局变了，退回绝对并提示重校准。
+- 改动点位后必须跑 `npm run wdt:verify`，退出码 3 不得上线。
+
+## 十、销售去重与财务口径兜底
+
+- 读销售一律走 `sales_effective` 视图：同日期同渠道 wdt 优先，企微旧口径不叠加（原始行不删）。
+- 报表中心财务口径在「无已审核凭证」时自动改用销售实发数据，并注明来源与成本率异常，不得显示空白。
+- 自检 `npm run test:caliber`。

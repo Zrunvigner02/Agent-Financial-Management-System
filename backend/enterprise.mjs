@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { get, all, run, now } from './store.mjs';
+import * as life from './lifecycle.mjs';
 import { xlsToTable } from './xls.mjs';
 import { recognize as ocrRecognize } from './ocr.mjs';
 
@@ -51,7 +52,20 @@ export function saveChannel(setId, data = {}) {
 
 /* ---------------- 销售日数据 ---------------- */
 
+/** 销售表的扩展列（老库由导入脚本逐步补上，新库在这里兜底） */
+let salesColsReady = false;
+function ensureSalesCols() {
+  if (salesColsReady) return;
+  const cols = all('PRAGMA table_info(sales_daily)').map((c) => c.name);
+  if (!cols.includes('staff')) run("ALTER TABLE sales_daily ADD COLUMN staff TEXT NOT NULL DEFAULT ''");
+  if (!cols.includes('group_name')) run("ALTER TABLE sales_daily ADD COLUMN group_name TEXT NOT NULL DEFAULT ''");
+  // 品牌维度：旺店通导入时写入（德国世家 / PF79 / 歌剧魅影）
+  if (!cols.includes('brand')) run("ALTER TABLE sales_daily ADD COLUMN brand TEXT NOT NULL DEFAULT ''");
+  salesColsReady = true;
+}
+
 export function listSales(setId, { from = '', to = '', source = '', product = '', staff = '', limit = 200 } = {}) {
+  ensureSalesCols();
   const where = ['set_id = ?'];
   const params = [setId];
   if (from) { where.push('date >= ?'); params.push(from); }
@@ -59,8 +73,8 @@ export function listSales(setId, { from = '', to = '', source = '', product = ''
   if (source) { where.push('source = ?'); params.push(source); }
   if (product) { where.push('product LIKE ?'); params.push(`%${product}%`); }
   if (staff) { where.push("COALESCE(staff,'') = ?"); params.push(staff); }
-  const rows = all(`SELECT * FROM sales_daily WHERE ${where.join(' AND ')}
-    ORDER BY date DESC, id DESC LIMIT ?`, ...params, Math.min(1000, Number(limit) || 200));
+  const rows = all(`SELECT * FROM sales_effective WHERE ${where.join(' AND ')}
+    ORDER BY date DESC, id DESC LIMIT ?`, ...params, Math.min(5000, Number(limit) || 200));
   const sum = rows.reduce((s, r) => ({
     qty: s.qty + Number(r.qty || 0),
     amount: s.amount + Number(r.amount || 0),
@@ -80,7 +94,52 @@ export function listSales(setId, { from = '', to = '', source = '', product = ''
 }
 
 /**
- * 批量导入销售数据（骨架）：校验行 → 写库。
+ * 按天聚合的销售序列（趋势图专用）
+ *
+ * 与 listSales 的区别：这里在库里 GROUP BY date 汇总，一天一行。
+ * 目的：趋势图要能翻看历史、缩放、拖动，客户端需要"整段区间"的连续序列；
+ * 若用 listSales 取原始行，31 天×多渠道就上百行，一年上万行会直接撞 limit。
+ *
+ * 返回同时带 min_date / max_date（全库覆盖范围，不受 from/to 影响），
+ * 前端据此决定"能不能继续往前拖"。
+ */
+export function salesDaily(setId, { from = '', to = '', source = '' } = {}) {
+  const where = ['set_id = ?'];
+  const params = [setId];
+  if (from) { where.push('date >= ?'); params.push(from); }
+  if (to) { where.push('date <= ?'); params.push(to); }
+  if (source) { where.push('source = ?'); params.push(source); }
+
+  const cov = get(`SELECT MIN(date) AS min_date, MAX(date) AS max_date, COUNT(*) AS n
+    FROM sales_daily WHERE set_id = ?${source ? ' AND source = ?' : ''}`,
+  ...(source ? [setId, source] : [setId]));
+
+  const rows = all(`SELECT date,
+      COALESCE(SUM(amount), 0) AS amount,
+      COALESCE(SUM(return_amount), 0) AS ret,
+      COALESCE(SUM(fee), 0) AS fee,
+      COALESCE(SUM(net_profit), 0) AS net,
+      COUNT(*) AS cnt
+    FROM sales_effective WHERE ${where.join(' AND ')}
+    GROUP BY date ORDER BY date`, ...params);
+
+  return ok({
+    min_date: cov?.min_date || '',
+    max_date: cov?.max_date || '',
+    total_rows: Number(cov?.n || 0),
+    days: rows.length,
+    items: rows.map((r) => ({
+      date: r.date,
+      amount: money(r.amount),
+      return_amount: money(r.ret),
+      fee: money(r.fee),
+      net_profit: money(r.net),
+      cnt: Number(r.cnt || 0),
+    })),
+  });
+}
+
+/**
  * 目前支持直接传 rows，模板映射与截图解析在后续版本接入。
  */
 export function importSales(setId, { rows = [], source = 'sales_dept', date = '' } = {}) {
@@ -318,7 +377,7 @@ export function salesCompare(setId, { from = '', to = '', level = 'product' } = 
   const params = [setId];
   if (from) { where.push('date >= ?'); params.push(from); }
   if (to) { where.push('date <= ?'); params.push(to); }
-  const rows = all(`SELECT * FROM sales_daily WHERE ${where.join(' AND ')}`, ...params);
+  const rows = all(`SELECT * FROM sales_effective WHERE ${where.join(' AND ')}`, ...params);
   const keyOf = (r) => (level === 'date' ? r.date : level === 'channel' ? String(r.channel_id) : (r.sku || r.product || '未归类'));
   const bucket = new Map();
   for (const r of rows) {
@@ -479,6 +538,7 @@ export function listIntake(setId, { from = '', to = '', category = '', source = 
 
 /* ---------------- 员工-渠道归属映射 ---------------- */
 export function setStaffMap(setId, { rows = [] } = {}) {
+  ensureSalesCols();
   if (!Array.isArray(rows) || !rows.length) return fail('没有收到归属数据');
   let updated = 0;
   const done = [];
@@ -495,8 +555,56 @@ export function setStaffMap(setId, { rows = [] } = {}) {
     : fail('没有匹配到可更新的记录，请确认渠道名与销售数据一致');
 }
 
+/**
+ * 某日/某区间是否已经入过库（给智能体判断"要不要再录"用）
+ * 返回每天每渠道每品牌的条数与金额，以及 covered 标记。
+ */
+export function salesDayStatus(setId, { date = '', from = '', to = '' } = {}) {
+  ensureSalesCols();
+  const f = String(date || from || '').slice(0, 10);
+  const t = String(date || to || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || !/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+    return fail('请给出日期（YYYY-MM-DD）或 from/to 区间');
+  }
+  const rows = all(`SELECT date, COALESCE(group_name,'') AS channel, COALESCE(brand,'') AS brand,
+      source, COUNT(*) AS n, ROUND(SUM(amount),2) AS amount, MAX(created_at) AS updated_at
+    FROM sales_daily WHERE set_id = ? AND date >= ? AND date <= ?
+    GROUP BY date, channel, brand, source ORDER BY date DESC, amount DESC`, setId, f, t);
+  const days = [...new Set(rows.map((r) => r.date))];
+  return ok({
+    from: f, to: t,
+    covered: days.length > 0,
+    days,
+    count: rows.length,
+    total: money(rows.reduce((a, r) => a + Number(r.amount || 0), 0)),
+    items: rows,
+    note: days.length
+      ? `已有数据：${days.length} 天、${rows.length} 组（日期×渠道×品牌）；重复导入只会更新，不会新增`
+      : '该区间库里没有数据',
+  });
+}
+
 export function staffSummary(setId) {
-  const rows = all(`SELECT COALESCE(staff,'') AS staff, COUNT(*) AS n, ROUND(SUM(amount),2) AS amount
-    FROM sales_daily WHERE set_id = ? GROUP BY COALESCE(staff,'') ORDER BY amount DESC`, setId);
-  return ok({ items: rows });
+  ensureSalesCols();
+  // 业绩口径：停用日之后的销售不计入本人业绩，但原始行一行不删（历史报表照旧可查）
+  const rows = all(`SELECT COALESCE(staff,'') AS staff, date, amount
+    FROM sales_effective WHERE set_id = ?`, setId);
+  const okDay = life.dayFilter(setId, 'staff');
+  const stops = life.stoppedMap(setId, 'staff');
+  const map = new Map();
+  for (const r of rows) {
+    const name = r.staff || '';
+    if (name && !okDay(name, r.date)) continue;
+    const o = map.get(name) || { staff: name, n: 0, amount: 0 };
+    o.n += 1;
+    o.amount += Number(r.amount || 0);
+    map.set(name, o);
+  }
+  const items = [...map.values()]
+    .map((o) => ({ ...o, amount: Math.round(o.amount * 100) / 100, stopped_at: stops.get(o.staff) || '' }))
+    .sort((a, b) => b.amount - a.amount);
+  return ok({
+    items,
+    note: '已按停用日期过滤：停用日之后的销售不计入该员工业绩；历史数据完整保留在库中',
+  });
 }

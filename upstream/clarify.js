@@ -1,10 +1,10 @@
-/* 妆点智能体 · 意图追问 + 全格式附件 + 会话自动命名（前端注入层 v2.2）
+/* 智能体 · 意图追问 + 全格式附件 + 会话自动命名（前端注入层 v2.2）
  * 不侵入 minified bundle：
  *  - patch fetch 给 /api/agent/chat 声明「本页能渲染选项」，并旁路解析 SSE
  *  - 即使 SSE 旁路失效，也能从消息文本 + REST /clarify/state|last 兜底恢复卡片
  *  - 卡片为 grill-me 式编号选项列表，末项固定「✎ 其他补充…（我自己输入）」
  *  - 上传控件 accept 扩容到表格 / 文档 / PDF / 图片等全部格式
- *  - 接收 event: session_title，实时更新侧栏会话名与顶部「妆点智能体·xxx」
+ *  - 接收 event: session_title，实时更新侧栏会话名与顶部「智能体·xxx」
  */
 (function () {
   'use strict';

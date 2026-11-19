@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""生成「妆点管账」桌面端图标：美妆（粉饼盘 / 口红 / 珠光）+ 财务（¥）。
+"""生成「振颜丽舍」桌面端图标：美妆（粉饼盘 / 口红 / 珠光）+ 财务（¥）。
 零第三方依赖，仅 Pillow。
 输出: desktop/icon.ico, desktop/icon.png, upstream/favicon.ico, upstream/favicon.png
 """

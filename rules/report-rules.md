@@ -141,7 +141,11 @@ npm run sales:report -- 2026-11      # 指定期间
 ## 渠道每日经营数据（标准日报）
 
 > 模板来源：`天猫-drhauschka日报_2026-11-18.xlsx`（德国世家）。**栏目一个都不能少、顺序不能改。**
-> 生成器：`node tools/make-channel-daily.mjs --channel <渠道> [--date|--from/--to] [--empty] [--out 路径]`
+> 生成器：`node tools/make-channel-daily.mjs --brand <品牌> --channel <渠道> [--date|--from/--to] [--empty] [--out 路径] [--shop "店铺全名"]`
+>
+> - 品牌默认 `drhauschka`；标题与文件名用「品牌 + 渠道店铺后缀」，如 `PF79` + `官方旗舰店（淘宝）` → 「PF79官方旗舰店（淘宝）每日经营数据」
+> - 店铺名不符合实际时用 `--shop "实际店铺名"` 覆盖
+> - 已内置渠道：天猫 / **淘宝** / 京东 / 拼多多 / 抖音 / 其他（自动生成后缀）
 
 ### 结构（两个工作表）
 
@@ -173,4 +177,4 @@ npm run sales:report -- 2026-11      # 指定期间
 
 - 空数据也要出表：保留全部栏目与合计行，缺的留空，`口径说明` 里注明「空缺表示数据源未接入，不代表为 0」
 - 不同渠道只改：标题店铺名、第 2 行数据来源、口径说明里的平台名；**表结构完全一致**
-- 渠道档案（店铺名/数据源）集中在 `tools/make-channel-daily.mjs` 的 `PROFILES`，新增渠道在那里加
+- 渠道档案（店铺后缀/数据源）集中在 `tools/make-channel-daily.mjs` 的 `PROFILES`，新增渠道在那里加；**品牌通过 `--brand` 传入，不在档案里写死**

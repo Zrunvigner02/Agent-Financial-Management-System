@@ -37,28 +37,38 @@ const DATE = arg('date', new Date().toLocaleDateString('sv-SE'));
 const FROM = arg('from', '');
 const TO = arg('to', DATE);
 const EMPTY = flag('empty');
+const BRAND = arg('brand', 'drhauschka');
+const SHOP = arg('shop', '');
 const OUT = arg('out', '');
 
 /* ---------------- 渠道档案 ---------------- */
 const PROFILES = {
   天猫: {
-    shop: 'drhauschka海外旗舰店（天猫）',
+    suffix: '海外旗舰店（天猫）',
     source: '数据来源：生意参谋（真实浏览器读取页面数据，每日 6:00 抓前一天）；退款为「完结时间」口径；推广消耗待接入阿里妈妈',
   },
+  淘宝: {
+    suffix: '官方旗舰店（淘宝）',
+    source: '数据来源：生意参谋-淘宝（真实浏览器读取页面数据，每日 6:00 抓前一天）；退款为「完结时间」口径；推广消耗待接入阿里妈妈',
+  },
   京东: {
-    shop: 'drhauschka京东自营旗舰店（京东）',
+    suffix: '京东自营旗舰店（京东）',
     source: '数据来源：京东商智（每日 6:00 抓前一天）；退款为「完成时间」口径；推广消耗待接入京准通',
   },
   拼多多: {
-    shop: 'drhauschka官方旗舰店（拼多多）',
+    suffix: '官方旗舰店（拼多多）',
     source: '数据来源：拼多多商家后台 · 数据中心（每日 6:00 抓前一天）；退款为「退款成功时间」口径；推广消耗待接入多多推广',
   },
   抖音: {
-    shop: 'drhauschka官方旗舰店（抖音）',
+    suffix: '官方旗舰店（抖音）',
     source: '数据来源：抖音电商罗盘（每日 6:00 抓前一天）；退款为「售后完成时间」口径；推广消耗待接入巨量千川',
   },
 };
-const profile = PROFILES[CHANNEL] || { shop: `drhauschka官方旗舰店（${CHANNEL}）`, source: `数据来源：${CHANNEL}商家后台（每日 6:00 抓前一天）；退款按退款成功时间统计；推广消耗待接入` };
+const base = PROFILES[CHANNEL] || { suffix: `官方旗舰店（${CHANNEL}）`, source: `数据来源：${CHANNEL}商家后台（每日 6:00 抓前一天）；退款按退款成功时间统计；推广消耗待接入` };
+const profile = {
+  shop: SHOP || `${BRAND}${base.suffix}`,
+  source: base.source,
+};
 
 /* ---------------- 栏目定义（与模板逐列一致，顺序不可改） ---------------- */
 // type: date | money | pct | int；agg: sum | avg
@@ -315,11 +325,11 @@ function buildXlsx(rows) {
 const rows = loadRows();
 const buf = buildXlsx(rows);
 const endDate = rows.length ? rows[rows.length - 1].date : (TO || DATE);
-const outPath = OUT || path.join(ROOT, 'exports', `${CHANNEL}-drhauschka日报_${endDate}.xlsx`);
+const outPath = OUT || path.join(ROOT, 'exports', `${CHANNEL}-${BRAND}日报_${endDate}.xlsx`);
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, buf);
 
 console.log(`已生成：${outPath}`);
-console.log(`渠道：${CHANNEL}｜店铺：${profile.shop}`);
+console.log(`品牌：${BRAND}｜渠道：${CHANNEL}｜店铺：${profile.shop}`);
 console.log(`数据行：${rows.length} 行${EMPTY ? '（空数据测试）' : ''}｜栏目：${COLS.length} 列（与模板一致）`);
 console.log(`合计行：第 ${4 + rows.length} 行（SUM / IFERROR(AVERAGE) 公式）`);

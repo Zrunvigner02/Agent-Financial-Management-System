@@ -46,7 +46,7 @@ if (cmd === 'on' || cmd === 'off') {
   const channel = env('PUSH_CHANNEL', 'app');
   const need = channel === 'robot'
     ? [['WECOM_WEBHOOK', env('WECOM_WEBHOOK')]]
-    : [['WECOM_CORPID', env('WECOM_CORPID')], ['WECOM_AGENTID', env('WECOM_AGENTID')],
+    : [['WECOM_CORPID 或 WECOM_CORP_ID', env('WECOM_CORPID') || env('WECOM_CORP_ID')], ['WECOM_AGENTID', env('WECOM_AGENTID')],
       ['WECOM_SECRET', env('WECOM_SECRET')], ['WECOM_TOUSER', env('WECOM_TOUSER')]];
   const missing = need.filter(([, v]) => !v).map(([k]) => k);
   console.log(`开关：${enabled ? '已开启' : '已关闭'}`);

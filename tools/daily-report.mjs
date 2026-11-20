@@ -23,6 +23,8 @@ const LOG_DIR = path.join(ROOT, 'logs');
 const DRY = process.argv.includes('--dry-run');
 
 const env = (k, d = '') => process.env[k] || readEnv(k) || d;
+// 兼容另一套命名：WECOM_CORP_ID / WECOM_SECRET（backend/wecom-bot.mjs 用的就是这套）
+const corpId = () => env('WECOM_CORPID') || env('WECOM_CORP_ID');
 const pad = (n) => String(n).padStart(2, '0');
 const now = () => {
   const d = new Date();
@@ -137,10 +139,10 @@ async function pushRobot() {
     if (channel === 'robot') {
       await pushRobot();
     } else {
-      const corpid = env('WECOM_CORPID');
+      const corpid = corpId();
       const secret = env('WECOM_SECRET');
       if (!corpid || !secret || !env('WECOM_AGENTID')) {
-        throw new Error('缺少 WECOM_CORPID / WECOM_SECRET / WECOM_AGENTID');
+        throw new Error('缺少企业微信配置：WECOM_CORPID(或 WECOM_CORP_ID) / WECOM_SECRET / WECOM_AGENTID');
       }
       const tk = await token(corpid, secret);
       say('access_token 已获取');

@@ -2,6 +2,17 @@
 
 本项目早期迭代密集（原 1.0 ~ 2.0 共 30 余个小版本），现按要求**压缩为两个版本节点**：所有历史统一归入「初始版本 v1.0.0」，此后从 **v1.1.0** 重新计数。
 
+## [1.9.1] — 2026-11-20
+
+### 新增
+
+- `tools/daily-report.mjs`：日报任务——生成报表 → 按开关推送企微（应用消息支持 Excel 附件，群机器人支持文字）→ 写 `logs/daily-report-YYYYMMDD.log`。
+- `tools/push-toggle.mjs`：推送开关与配置自检（`npm run push:on/off/status/test`）。
+- Windows 计划任务 `ZD-DailyReport-20`：每天 20:00 触发。
+- `.env` 新增 `PUSH_ENABLED` / `PUSH_CHANNEL` / `WECOM_*` 配置项。
+
+## [1.8.1] — 2026-11-17
+
 ---
 
 ## [1.1.0] — 2026-11-20

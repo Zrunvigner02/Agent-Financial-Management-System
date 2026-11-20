@@ -18,6 +18,8 @@ global CheckFile := A_ScriptDir "\wdt-coords-check.txt"
 global WIN := "ahk_exe 旺店通ERP旗舰版.exe"
 global OUT_DIR := "D:\振颜丽舍\wdt\每日导出"
 global gMain := 0
+global gOrig := 0
+global gMoved := false
 
 KEYS := ["menu", "sale", "daily", "from", "fromok", "to", "took",
          "search", "header", "export", "tpl", "ok"]
@@ -54,15 +56,29 @@ if !main && !VERIFY {
   Log("旺店通未运行，尝试启动")
   try {
     Run "C:/Program Files (x86)/旺店通ERP旗舰版/旺店通ERP旗舰版.exe"
-    Sleep 15000
-    area := 0
-    for hwnd in WinGetList(WIN) {
-      try {
-        WinGetPos &x, &y, &w, &h, "ahk_id " hwnd
-        if (w * h > area) {
-          area := w * h
-          main := hwnd
+    ; 冷启动 + 自动登录可能要半分钟，轮询等主窗口，别死等固定时间
+    Loop 30 {
+      Sleep 2000
+      area := 0
+      for hwnd in WinGetList(WIN) {
+        try {
+          WinGetPos &x, &y, &w, &h, "ahk_id " hwnd
+          if (w * h > area) {
+            area := w * h
+            main := hwnd
+          }
         }
+      }
+      if main
+        break
+    }
+    if !main {
+      ; 可能有登录窗口挡着，先把原因记下来，方便第二天看
+      for hwnd in WinGetList() {
+        t := ""
+        try t := WinGetTitle("ahk_id " hwnd)
+        if RegExMatch(t, "登录|登陆|扫码")
+          Log("疑似登录窗口：" t "（需人工登录一次）")
       }
     }
   }
@@ -111,8 +127,13 @@ Resolve(key) {
 
 ; 统一的退出入口：把窗口层级还原，避免 ERP 一直压在最上面
 Done(code) {
-  global gMain
+  global gMain, gMoved, gOrig
   try WinSetAlwaysOnTop 0, "ahk_id " gMain
+  ; 归位过就把窗口放回用户原来的位置，别打扰他
+  try {
+    if (gMoved && gOrig && gOrig.w > 0)
+      WinMove gOrig.x, gOrig.y, gOrig.w, gOrig.h, "ahk_id " gMain
+  }
   ExitApp code
 }
 
@@ -195,6 +216,21 @@ if VERIFY {
 }
 
 /* ---------------- 正式导出 ---------------- */
+; 窗口几何归一化：校准是在固定位置/尺寸下取的坐标。
+; 实测踩过坑：窗口跑到 x=1457（屏幕只有 1920 宽），点击全部落到屏幕外，导出静默失败。
+rx := IniRead(CoordFile, "window", "x", ""), ry := IniRead(CoordFile, "window", "y", "")
+rW := IniRead(CoordFile, "window", "w", ""), rH := IniRead(CoordFile, "window", "h", "")
+WinGetPos &ox, &oy, &ow, &oh, "ahk_id " main
+gOrig := { x: ox, y: oy, w: ow, h: oh }
+gMoved := false
+if (rx != "" && rW != ""
+  && (Abs(ox - rx) > 8 || Abs(oy - ry) > 8 || Abs(ow - rW) > 8 || Abs(oh - rH) > 8)) {
+  WinMove rx, ry, rW, rH, "ahk_id " main
+  Sleep 900
+  gMoved := true
+  Log("窗口归位：原 " ox "," oy " " ow "x" oh " → " rx "," ry " " rW "x" rH)
+}
+
 ; 别的窗口（含本助手）可能盖在 ERP 前面，点击会打偏 —— 临时置顶，退出时还原
 WinSetAlwaysOnTop 1, "ahk_id " main
 WinActivate "ahk_id " main
@@ -266,21 +302,53 @@ Sleep 800
 outFile := OUT_DIR "\销售订单-" TO ".csv"
 if !DirExist(OUT_DIR)
   DirCreate OUT_DIR
-SendText outFile
+
+; 文件名框默认聚焦，先试着只填文件名（对话框一般已在目标目录）
+SendText "销售订单-" TO ".csv"
 Sleep 600
 Send "{Enter}"
 Sleep 2000
-if WinExist("ahk_class #32770") {
-  ; 路径被拒（多半是目录不同或含非法字符）→ 只填文件名，目录已经是它自己选的
-  hDlg := WinExist("ahk_class #32770")
+
+; 若是标准另存为（可能要求完整路径），用控件写入兜底
+if WinExist("另存为") {
+  hDlg := WinExist("另存为")
   ControlSetText "销售订单-" TO ".csv", "Edit1", "ahk_id " hDlg
   Sleep 400
+  WinActivate "ahk_id " hDlg
+  Sleep 200
   Send "{Enter}"
-  Sleep 1800
-  if WinExist("ahk_class #32770") {
-    Send "{Enter}"
-    Sleep 1000
+  Sleep 2200
+}
+
+; ERP 保存后会弹「导出成功，是否立即打开文件？」—— 选「否」，否则会把 CSV 甩给 Excel
+if WinWait("旺店通管理系统",, 10) {
+  hMsg := WinExist("旺店通管理系统")
+  WinActivate "ahk_id " hMsg
+  Sleep 300
+  ControlSend "!n",, "ahk_id " hMsg      ; 否(&N)
+  Sleep 600
+  if WinExist("ahk_id " hMsg) {
+    Send "{Esc}"
+    Sleep 400
+  }
+  Log("已应答「导出成功」提示（不打开文件）")
+}
+
+if FileExist(outFile) {
+  Log("已导出：" outFile)
+  Done(0)
+}
+
+; 文件不在预期位置：给出目录里最新的 csv，方便排查
+newest := ""
+newestTime := ""
+try {
+  Loop Files, OUT_DIR "\*.csv" {
+    if (A_LoopFileTimeModified > newestTime) {
+      newestTime := A_LoopFileTimeModified
+      newest := A_LoopFileFullPath
+    }
   }
 }
-Log("已导出：" outFile)
-Done(0)
+Log("导出未落到预期路径：" outFile "；目录最新：" (newest = "" ? "无" : newest))
+Done(4)

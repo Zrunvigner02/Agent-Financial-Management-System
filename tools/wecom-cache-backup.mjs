@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -34,12 +35,27 @@ const MAX_MB = Number(process.env.WECOM_BACKUP_MAX_MB || 200);
 
 const argv = process.argv.slice(2);
 const DRY = argv.includes('--dry');
+// 只在企微真的开着的时候备份：没开就跳过，不报错、不刷屏
+const IF_RUNNING = argv.includes('--if-running');
 const pruneIdx = argv.indexOf('--prune');
 const PRUNE_DAYS = pruneIdx >= 0 ? Number(argv[pruneIdx + 1] || 30) : 0;
 
 const SKIP_EXT = new Set(['.db', '.db-wal', '.db-shm', '.tmp', '.lock', '.log']);
 const SKIP_DIR = new Set(['CefCache', 'EML', 'Index', 'TempFile']);
 const SUBDIRS = ['Cache', 'Data', 'Backup', 'WeDrive'];   // 头像/表情不入库，省空间
+
+/** 企微客户端是否在运行（没开就不备份，避免空跑） */
+function wecomRunning(proc = process.env.WECOM_PROC || 'WXWork.exe') {
+  try {
+    const out = execFileSync('tasklist', ['/FI', `IMAGENAME eq ${proc}`, '/NH'], {
+      encoding: 'utf8', windowsHide: true, timeout: 8000,
+    });
+    // 进程不存在时 tasklist 会输出「信息: 没有运行的任务匹配指定标准。」
+    return out.toLowerCase().includes(proc.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 const today = () => {
   const d = new Date();
@@ -75,10 +91,14 @@ function walk(dir, out = []) {
 }
 
 function main() {
+  if (IF_RUNNING && !wecomRunning()) {
+    console.log('企微未运行，本次跳过（不做空备份）');
+    process.exit(0);
+  }
   if (!fs.existsSync(SRC)) {
     console.log(`找不到企微目录：${SRC}`);
     console.log('若已迁移，请确认 Documents\\WXWork 联接存在，或设置 WECOM_CACHE_DIR 指向实际位置。');
-    process.exit(1);
+    process.exit(IF_RUNNING ? 0 : 1);
   }
 
   const idx = loadIndex();

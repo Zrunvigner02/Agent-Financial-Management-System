@@ -28,8 +28,13 @@ const prevMonth = () => {
   d.setMonth(d.getMonth() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
-const PERIOD = argv.find((a) => /^\d{4}-\d{2}$/.test(a)) || prevMonth();
-const OUTDIR = arg('--out', `D:\\振颜丽舍\\报表\\月报\\${PERIOD}`);
+const positional = argv.find((a) => /^\d{4}-\d{2}$/.test(a));
+const PERIOD = arg('--period', positional || prevMonth());
+const FROM = arg('--from', PERIOD);
+const TO = arg('--to', PERIOD);
+const LABEL = arg('--label', FROM === TO ? PERIOD : `${FROM}_${TO}`);
+const SPAN = FROM === TO ? FROM : `${FROM} ~ ${TO}`;
+const OUTDIR = arg('--out', `D:/振颜丽舍/报表/月报/${LABEL}`);
 const DB = process.env.ZD_DB_PATH || path.join(ROOT, 'backend', 'data', 'jinli.db');
 const SET = Number(process.env.ZD_SET_ID || 85);
 
@@ -40,8 +45,8 @@ const rows = db.prepare(`SELECT COALESCE(brand,'') b, COALESCE(group_name,'') c,
     COUNT(DISTINCT date) days, ROUND(SUM(amount),2) amount, ROUND(SUM(return_amount),2) ret,
     ROUND(SUM(cost),2) cost, ROUND(SUM(fee),2) fee, ROUND(SUM(net_profit),2) net
   FROM sales_effective
-  WHERE set_id = ? AND source = 'wdt' AND substr(date,1,7) = ?
-  GROUP BY 1,2 ORDER BY amount DESC`).all(SET, PERIOD);
+  WHERE set_id = ? AND source = 'wdt' AND substr(date,1,7) >= ? AND substr(date,1,7) <= ?
+  GROUP BY 1,2 ORDER BY amount DESC`).all(SET, FROM, TO);
 
 const total = rows.reduce((a, r) => ({
   days: Math.max(a.days, r.days), amount: a.amount + r.amount, ret: a.ret + r.ret,
@@ -79,7 +84,7 @@ data.push(['合计', '', total.days, total.amount, total.ret, total.amount - tot
   pct(total.cost, total.amount), '']);
 
 const NOTES = [
-  ['期间', PERIOD],
+  ['期间', SPAN],
   ['数据来源', '旺店通导出（sales_effective，同日期同渠道 wdt 优先）'],
   ['缺项', '退款/件数/平台费：旺店通「销售日统计」无这些列，需另导退货单与平台账单'],
   ['标准表', '本表是「月对比表-日报汇总」的底层汇总；单品维度需订单明细（含 SKU）'],
@@ -141,8 +146,8 @@ const files = [
 ];
 
 fs.mkdirSync(OUTDIR, { recursive: true });
-const out = path.join(OUTDIR, `品牌渠道月汇总-${PERIOD}.xlsx`);
+const out = path.join(OUTDIR, `品牌渠道汇总-${LABEL}.xlsx`);
 fs.writeFileSync(out, zipStore(files));
 
-console.log(`期间 ${PERIOD}｜${rows.length} 个品牌×渠道组合｜合计销售 ${money(total.amount)}｜净利 ${money(total.net)}`);
+console.log(`期间 ${SPAN}｜${rows.length} 个品牌×渠道组合｜合计销售 ${money(total.amount)}｜净利 ${money(total.net)}`);
 console.log(`输出：${out}`);

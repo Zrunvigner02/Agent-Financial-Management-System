@@ -456,7 +456,7 @@ async function handleMcp(res, body, authHeader) {
     return sendJson(res, 200, mcpResult(id, {
       protocolVersion: params.protocolVersion || '2024-11-05',
       capabilities: { tools: { listChanged: false } },
-      serverInfo: { name: 'zhuangdian-guanzhang-local', version: '2.0.3' },
+      serverInfo: { name: 'zhuangdian-guanzhang-local', version: '1.1.0' },
     }), { 'mcp-session-id': randomUUID() });
   }
   if (method === 'ping') return sendJson(res, 200, mcpResult(id, {}));
